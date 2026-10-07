@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>AR Product Demos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#f2f3f1;--surface:#fff;--line:#d8dcd6;--fg:#161b18;--muted:#5d665f;--a1:#2a55e5;--a2:#2f6b4f;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#101312;--surface:#181c1a;--line:#2b312d;--fg:#eef1ee;--muted:#9aa49d;--a1:#6f8cff;--a2:#7cc39c;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 "Figtree",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:calc(32px + env(safe-area-inset-top,0px)) 16px 40px;display:grid;gap:20px}
+h1{font:700 clamp(28px,6vw,40px)/1.1 "Familjen Grotesk",system-ui,sans-serif;margin:0;letter-spacing:-.02em}
+p{margin:0;color:var(--muted);max-width:60ch}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+a.card{display:grid;gap:6px;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px}
+a.card strong{font:700 20px "Familjen Grotesk",system-ui,sans-serif}
+a.card span{color:var(--muted);font-size:14px}
+a.card em{font-style:normal;font-weight:600;font-size:14px;margin-top:6px}
+.e em{color:var(--a1)} .f em{color:var(--a2)}
+a.card:focus-visible{outline:2px solid var(--a1);outline-offset:2px}
+small{color:var(--muted)}
+</style></head><body>
+<main>
+  <h1>See it in your room</h1>
+  <p>Two WebAR demos. Open on your phone in Chrome (Android) or Safari (iPhone), pick a product and tap “View in your room”.</p>
+  <div class="grid">
+    <a class="card e" href="electronics/"><strong>Electronics Accessories</strong><span>Headphones, power bank and speaker at true size.</span><em>Open demo →</em></a>
+    <a class="card f" href="furniture/"><strong>Grove Home</strong><span>Sofa, armchair, coffee table, lamp and bookshelf.</span><em>Open demo →</em></a>
+  </div>
+  <small>Phones without ARCore open Camera view instead, where you set the distance by hand.</small>
+</main>
+</body></html>

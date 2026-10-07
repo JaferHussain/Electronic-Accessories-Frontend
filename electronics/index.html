@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Electronics Accessories AR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: product page. Big 3D stage beside the buy panel on wide screens, stacked on phones; product switcher strip below. */
+:root{
+  --bg:#f3f5f9; --surface:#ffffff; --stage:#e7ebf2; --line:#d9dee8;
+  --fg:#141821; --muted:#5d6577; --accent:#2a55e5; --accent-ink:#ffffff; --ok:#1d8a5b;
+  --f-display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1218; --surface:#171b23; --stage:#1e2430; --line:#2a3140;
+  --fg:#eef1f6; --muted:#9aa3b5; --accent:#6f8cff; --accent-ink:#0b1020; --ok:#4cc68f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1218; --surface:#171b23; --stage:#1e2430; --line:#2a3140;
+  --fg:#eef1f6; --muted:#9aa3b5; --accent:#6f8cff; --accent-ink:#0b1020; --ok:#4cc68f; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-body)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:14px 32px;display:grid;gap:16px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.logo{font:700 18px/1.1 var(--f-display);letter-spacing:-.01em}
+.logo small{display:block;font:500 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.pill{font:500 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:5px 10px;color:var(--muted)}
+.main{display:grid;gap:16px;grid-template-columns:minmax(0,1fr)}
+@media (min-width:880px){.main{grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);align-items:start}}
+.stage{position:relative;background:radial-gradient(120% 90% at 50% 30%,var(--surface),var(--stage));border:1px solid var(--line);border-radius:20px;overflow:hidden;aspect-ratio:1/1;max-width:100%}
+@media (min-width:880px){.stage{aspect-ratio:auto;height:min(72vh,640px)}}
+model-viewer{width:100%;height:100%;--poster-color:transparent;background:transparent}
+.loading{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:14px;pointer-events:none}
+.dims{position:absolute;left:14px;bottom:14px;font:500 12px var(--f-mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 9px;color:var(--muted)}
+.dims b{color:var(--fg);font-weight:500}
+.hint3d{position:absolute;right:14px;top:14px;font-size:12px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 10px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px;display:grid;gap:18px;min-width:0}
+.cat{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{font:700 clamp(26px,4vw,34px)/1.1 var(--f-display);letter-spacing:-.02em;margin:4px 0 0;text-wrap:balance}
+.price{font:600 22px var(--f-display)}
+.desc{margin:0;color:var(--muted);max-width:60ch}
+.lbl{font-size:13px;color:var(--muted);margin-bottom:8px}
+.lbl b{color:var(--fg);font-weight:600}
+.swatches{display:flex;gap:10px}
+.sw{width:36px;height:36px;border-radius:50%;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--line)}
+.sw.on{box-shadow:0 0 0 2px var(--accent)}
+.ar-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;border:0;border-radius:14px;padding:14px 18px;background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:16px}
+.ar-btn:disabled{opacity:.45;cursor:default}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.status{font-size:13px;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:6px;flex:0 0 auto}
+.dot.ok{background:var(--ok)}
+.specs{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13px;margin:0}
+.specs dt{color:var(--muted)}
+.specs dd{margin:0;font-variant-numeric:tabular-nums}
+.strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.prod{display:grid;gap:4px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px;min-width:0}
+.prod.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.prod .n{font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod .p{font-size:13px;color:var(--muted)}
+.prod .c{display:flex;gap:4px}
+.prod .c i{width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 1px var(--line)}
+@media (max-width:420px){.prod{padding:10px}.prod .n{font-size:13px}}
+.foot{font-size:12px;color:var(--muted);max-width:70ch}
+/* camera view fallback: fixed dark overlay, camera feed behind the model */
+.cam{position:fixed;inset:0;z-index:50;background:#000;overflow:hidden}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam model-viewer{position:absolute;inset:0;width:100%;height:100%;background:transparent}
+.cam-top{position:absolute;left:0;right:0;top:0;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;display:flex;justify-content:center;pointer-events:none}
+.cam-top span{background:rgba(0,0,0,.55);color:#fff;font-size:13px;padding:6px 12px;border-radius:999px;text-align:center;max-width:100%}
+.cam-bar{position:absolute;left:0;right:0;bottom:0;padding:16px 20px calc(22px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;justify-content:space-between;gap:12px}
+.cam-btn{border:0;background:rgba(0,0,0,.55);color:#fff;padding:10px 16px;border-radius:999px;font-weight:600;min-width:76px}
+.cam-shot{width:68px;height:68px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}
+.cam-shot:active{background:#fff}
+</style>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module" src="https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"></script>
+
+<div class="wrap">
+  <header class="bar">
+    <div class="logo">Electronics Accessories<small>See it in your space</small></div>
+    <span class="pill">WebAR</span>
+  </header>
+
+  <main class="main">
+    <section class="stage" aria-label="3D product view">
+      <model-viewer id="mv" camera-controls touch-action="pan-y" shadow-intensity="1" shadow-softness=".8"
+        environment-image="neutral" exposure="1.05" ar ar-modes="webxr quick-look" ar-scale="fixed"
+        camera-orbit="35deg 70deg auto" interaction-prompt="auto" alt="3D product model">
+        <button slot="ar-button" hidden></button>
+      </model-viewer>
+      <div class="loading" id="loading">Building 3D model…</div>
+      <span class="hint3d">Drag to rotate · pinch to zoom</span>
+      <div class="dims" id="dims"></div>
+    </section>
+
+    <section class="panel">
+      <div>
+        <div class="cat" id="cat"></div>
+        <h1 id="name"></h1>
+      </div>
+      <div class="price" id="price"></div>
+      <p class="desc" id="desc"></p>
+      <div>
+        <div class="lbl">Color: <b id="colorName"></b></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <button class="ar-btn" id="arBtn"><svg class="i" viewBox="0 0 24 24"><path d="M12 3 4 7.5v9L12 21l8-4.5v-9z"/><path d="M4 7.5 12 12l8-4.5M12 12v9"/></svg>View in your room</button>
+      <div class="status"><span class="dot" id="arDot"></span><span id="arMsg">Checking whether this device supports AR…</span></div>
+      <dl class="specs" id="specs"></dl>
+    </section>
+  </main>
+
+  <nav class="strip" id="strip" aria-label="Products"></nav>
+
+  <div class="cam" id="cam" hidden>
+    <video id="camVideo" playsinline muted autoplay></video>
+    <model-viewer id="mv2" camera-controls touch-action="none" environment-image="neutral" exposure="1.1" shadow-intensity=".6" interaction-prompt="none" alt="Product over camera view"></model-viewer>
+    <div class="cam-top"><span id="camTip">Pinch to resize · drag to turn</span></div>
+    <div class="cam-bar">
+      <button class="cam-btn" id="camClose">Close</button>
+      <button class="cam-shot" id="camShot" aria-label="Take photo"></button>
+      <button class="cam-btn" id="camReset">Reset</button>
+    </div>
+  </div>
+
+  <p class="foot">These three products are placeholder models built in code so the demo works without uploads. In the live store, each product points to its own .glb file (and optionally a .usdz for iPhone), stored next to the product row in the database.</p>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const PRODUCTS = [
+  { id:'pulse', name:'Pulse ANC Headphones', cat:'Audio · Over-ear', price:79, size:[18,20,8],
+    desc:'Over-ear wireless headphones with active noise cancelling and soft memory-foam cushions.',
+    colors:[['Graphite','#2b2f36'],['Sand','#d8cbb3'],['Ocean','#2f5d8a']],
+    specs:[['Battery','40 hours'],['Charging','USB-C, 10 min = 5 h'],['Weight','265 g']], build:buildHeadphones },
+  { id:'volt', name:'Volt 20K Power Bank', cat:'Power · Portable', price:39, size:[7,2.8,15],
+    desc:'20,000 mAh power bank with fast charging and a four-dot charge indicator.',
+    colors:[['Black','#1f2125'],['Chalk','#eceae6'],['Mint','#9fd8c4']],
+    specs:[['Capacity','20,000 mAh'],['Output','22.5 W max'],['Weight','390 g']], build:buildPowerBank },
+  { id:'halo', name:'Halo Mini Speaker', cat:'Audio · Bluetooth', price:59, size:[10,14,10],
+    desc:'Compact 360° speaker in water-resistant fabric with a light ring that follows the beat.',
+    colors:[['Charcoal','#3a3d44'],['Coral','#e07a5f'],['Sky','#8fb8de']],
+    specs:[['Battery','16 hours'],['Rating','IPX7'],['Weight','480 g']], build:buildSpeaker },
+];
+
+/* ---------- product models, built at real-world scale in meters ---------- */
+const mat=(name,color,o={})=>{const m=new THREE.MeshStandardMaterial({color,roughness:o.r??.5,metalness:o.m??0});m.name=name;if(o.e){m.emissive=new THREE.Color(o.e);m.emissiveIntensity=1}return m};
+function buildHeadphones(body){
+  const g=new THREE.Group(),B=mat('Body',body,{r:.45}),C=mat('Cushion','#1a1a1c',{r:.85}),M=mat('Metal','#b9bec7',{r:.3,m:1});
+  const band=new THREE.Mesh(new THREE.TorusGeometry(.085,.009,20,64,Math.PI),B);g.add(band);
+  const pad=new THREE.Mesh(new THREE.TorusGeometry(.085,.011,16,48,Math.PI*.5),C);pad.rotation.z=Math.PI*.25;pad.scale.set(.93,.93,.8);g.add(pad);
+  for(const s of[-1,1]){
+    const side=new THREE.Group();side.position.set(s*.085,-.055,0);
+    const slider=new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.05,12),M);slider.position.y=.03;side.add(slider);
+    const yoke=new THREE.Mesh(new THREE.TorusGeometry(.042,.004,10,32,Math.PI),M);yoke.rotation.y=Math.PI/2;yoke.position.y=.002;side.add(yoke);
+    const cup=new THREE.Mesh(new THREE.CylinderGeometry(.045,.042,.03,40),B);cup.rotation.z=Math.PI/2;cup.position.y=-.03;side.add(cup);
+    const cush=new THREE.Mesh(new THREE.TorusGeometry(.034,.012,16,40),C);cush.rotation.y=Math.PI/2;cush.position.set(-s*.018,-.03,0);side.add(cush);
+    g.add(side);
+  }
+  g.position.y=.13;return g;
+}
+function buildPowerBank(body){
+  const g=new THREE.Group(),B=mat('Body',body,{r:.35}),D=mat('Port','#0b0b0c',{r:.6}),L=mat('LED','#2a8cff',{e:'#2a8cff'});
+  const box=new THREE.Mesh(new RoundedBoxGeometry(.07,.028,.15,6,.009),B);g.add(box);
+  for(let i=0;i<4;i++){const d=new THREE.Mesh(new THREE.CylinderGeometry(.0018,.0018,.001,12),L);d.position.set(-.012+i*.008,.0141,.06);g.add(d)}
+  const usb=new THREE.Mesh(new RoundedBoxGeometry(.009,.0035,.002,2,.0012),D);usb.position.set(-.012,0,.0751);g.add(usb);
+  const usb2=usb.clone();usb2.position.x=.012;g.add(usb2);
+  g.position.y=.014;return g;
+}
+function buildSpeaker(body){
+  const g=new THREE.Group(),B=mat('Body',body,{r:.95}),K=mat('Cap','#16181c',{r:.4}),L=mat('Light','#56e0ff',{e:'#56e0ff'});
+  const can=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.12,64),B);g.add(can);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.049,.05,.016,64),K);cap.position.y=.068;g.add(cap);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(.036,.0022,10,64),L);ring.rotation.x=Math.PI/2;ring.position.y=.0765;g.add(ring);
+  const btn=new THREE.Mesh(new THREE.CylinderGeometry(.008,.008,.002,24),K);btn.position.y=.077;g.add(btn);
+  const foot=new THREE.Mesh(new THREE.CylinderGeometry(.046,.044,.006,48),K);foot.position.y=-.063;g.add(foot);
+  g.position.y=.066;return g;
+}
+const exporter=new GLTFExporter(), cache=new Map();
+function toGLB(p){
+  if(cache.has(p.id))return Promise.resolve(cache.get(p.id));
+  const scene=new THREE.Scene();scene.add(p.build(p.colors[0][1]));
+  return new Promise((res,rej)=>exporter.parse(scene,buf=>{const url=URL.createObjectURL(new Blob([buf],{type:'model/gltf-binary'}));cache.set(p.id,url);res(url)},rej,{binary:true}));
+}
+
+/* Prefer a real file at models/<id>.glb (Android Scene Viewer needs a public URL); fall back to building it in the browser. */
+async function modelUrl(p){
+  const url=new URL(`models/${p.id}.glb`,location.href).href;
+  try{const r=await fetch(url,{method:'HEAD'});if(r.ok)return url}catch(e){}
+  return toGLB(p);
+}
+function arBlocker(){
+  let framed=false;try{framed=window.self!==window.top}catch(e){framed=true}
+  const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(!mobile)return'Open this page on your phone to place the product in your room. On a computer you can rotate and zoom it here.';
+  if(framed)return'Camera AR is blocked inside this preview. Open the page link directly in Chrome (Android) or Safari (iPhone).';
+  if(!window.isSecureContext)return'AR only works on a secure link. Open the page with https:// instead of http://.';
+  if(/iPhone|iPad|iPod/i.test(navigator.userAgent)&&!/Safari/i.test(navigator.userAgent)||/CriOS|FxiOS/i.test(navigator.userAgent))return'On iPhone, open this page in Safari to use AR.';
+  return'This phone does not support AR. Android needs Google Play Services for AR (ARCore); iPhone needs iOS 12 or later.';
+}
+
+/* ---------- page ---------- */
+const $=s=>document.querySelector(s), mv=$('#mv');
+let cur=PRODUCTS[0], colorIdx=0;
+const money=n=>'$'+n.toFixed(2);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderStrip(){
+  $('#strip').innerHTML=PRODUCTS.map(p=>`<button class="prod${p===cur?' on':''}" data-id="${p.id}"><span class="c">${p.colors.map(c=>`<i style="background:${c[1]}"></i>`).join('')}</span><span class="n">${esc(p.name)}</span><span class="p">${money(p.price)}</span></button>`).join('');
+}
+function renderPanel(){
+  $('#cat').textContent=cur.cat;$('#name').textContent=cur.name;$('#price').textContent=money(cur.price);$('#desc').textContent=cur.desc;
+  $('#colorName').textContent=cur.colors[colorIdx][0];
+  $('#swatches').innerHTML=cur.colors.map((c,i)=>`<button class="sw${i===colorIdx?' on':''}" data-i="${i}" style="background:${c[1]}" aria-label="${c[0]}"></button>`).join('');
+  const[w,h,d]=cur.size;
+  $('#dims').innerHTML=`<b>${w} × ${h} × ${d}</b> cm · true size in AR`;
+  $('#specs').innerHTML=[['Size',`${w} × ${h} × ${d} cm`],...cur.specs].map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('');
+}
+async function show(p){
+  cur=p;colorIdx=0;renderStrip();renderPanel();
+  $('#loading').hidden=false;
+  try{mv.src=await modelUrl(p)}catch(e){$('#loading').textContent='The 3D model could not be built in this browser.'}
+}
+function applyColor(v=mv){
+  const m=v.model&&v.model.materials.find(x=>x.name==='Body');
+  if(m)m.pbrMetallicRoughness.setBaseColorFactor(cur.colors[colorIdx][1]);
+}
+mv.addEventListener('load',()=>{
+  $('#loading').hidden=true;applyColor();
+  const can=mv.canActivateAR;
+  $('#arDot').classList.toggle('ok',can);
+  $('#arMsg').textContent=can
+    ?'AR is ready. Tap the button, point your camera at a table or the floor, and the product appears at its real size.'
+    :canCamera()
+      ?'Full AR is not supported on this phone, so the button opens Camera view: the product floats over your camera and you size it by hand.'
+      :arBlocker();
+});
+
+/* ---------- Camera view: works on phones without ARCore / WebXR ---------- */
+function canCamera(){
+  let framed=false;try{framed=window.self!==window.top}catch(e){framed=true}
+  const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  return mobile&&!framed&&window.isSecureContext&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
+}
+const mv2=$('#mv2'),camVideo=$('#camVideo');let camStream=null;
+async function openCam(){
+  try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false})}
+  catch(e){
+    $('#arMsg').textContent=e&&e.name==='NotAllowedError'
+      ?'Camera permission was denied. Allow camera access for this site in your browser settings, then tap the button again.'
+      :'The camera could not start on this phone. Close other apps using the camera and try again.';
+    return;
+  }
+  camVideo.srcObject=camStream;camVideo.play().catch(()=>{});
+  $('#cam').hidden=false;document.body.style.overflow='hidden';
+  $('#camTip').textContent='Pinch to resize · drag to turn';
+  if(mv2.src!==mv.src)mv2.src=mv.src;else applyColor(mv2);
+}
+function closeCam(){
+  if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null;camVideo.srcObject=null;
+  $('#cam').hidden=true;document.body.style.overflow='';
+}
+mv2.addEventListener('load',()=>applyColor(mv2));
+$('#camClose').addEventListener('click',closeCam);
+$('#camReset').addEventListener('click',()=>{mv2.cameraOrbit='0deg 75deg auto';mv2.fieldOfView='auto';mv2.jumpCameraToGoal()});
+$('#camShot').addEventListener('click',async()=>{
+  try{
+    const W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1),c=document.createElement('canvas');
+    c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);const x=c.getContext('2d');
+    const vw=camVideo.videoWidth,vh=camVideo.videoHeight,s=Math.max(c.width/vw,c.height/vh);
+    x.drawImage(camVideo,(c.width-vw*s)/2,(c.height-vh*s)/2,vw*s,vh*s);
+    const bmp=await createImageBitmap(await mv2.toBlob({idealAspect:false}));
+    x.drawImage(bmp,0,0,c.width,c.height);
+    c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${cur.id}-in-my-room.jpg`;document.body.appendChild(a);a.click();a.remove();
+      $('#camTip').textContent='Photo saved';},'image/jpeg',.9);
+  }catch(e){$('#camTip').textContent='Could not take the photo on this phone.'}
+});
+mv.addEventListener('ar-status',e=>{
+  if(e.detail.status==='failed')$('#arMsg').textContent='AR could not start. Allow camera access, move to a brighter spot with a clear flat surface, and try again.';
+});
+$('#arBtn').addEventListener('click',()=>{
+  if(mv.canActivateAR){mv.activateAR();return}
+  if(canCamera()){openCam();return}
+  $('#arMsg').textContent=arBlocker();
+  $('#arMsg').parentElement.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:220});
+});
+$('#strip').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b&&b.dataset.id!==cur.id)show(PRODUCTS.find(p=>p.id===b.dataset.id))});
+$('#swatches').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(!b)return;colorIdx=+b.dataset.i;renderPanel();applyColor()});
+
+customElements.whenDefined('model-viewer').then(()=>show(cur));
+renderStrip();renderPanel();
+</script>
+
+</html>

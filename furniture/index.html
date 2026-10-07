@@ -75,6 +75,10 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .cam-btn{border:0;background:rgba(0,0,0,.55);color:#fff;padding:10px 16px;border-radius:999px;font-weight:600;min-width:76px}
 .cam-shot{width:68px;height:68px;border-radius:50%;border:4px solid #fff;background:rgba(255,255,255,.25)}
 .cam-shot:active{background:#fff}
+.cam-ctl{position:absolute;left:16px;right:16px;bottom:calc(112px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;background:rgba(0,0,0,.5);border-radius:14px;padding:10px 12px}
+.cam-row{display:grid;grid-template-columns:96px minmax(0,1fr) 56px;align-items:center;gap:10px;color:#fff;font-size:13px}
+.cam-row input{width:100%;accent-color:#fff}
+.cam-row b{font:500 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 </style>
 
 <script type="importmap">
@@ -121,8 +125,13 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 
   <div class="cam" id="cam" hidden>
     <video id="camVideo" playsinline muted autoplay></video>
-    <model-viewer id="mv2" camera-controls touch-action="none" environment-image="neutral" exposure="1.1" shadow-intensity=".6" interaction-prompt="none" alt="Product over camera view"></model-viewer>
-    <div class="cam-top"><span id="camTip">Pinch to resize · drag to turn</span></div>
+    <model-viewer id="mv2" touch-action="none" disable-zoom disable-pan environment-image="neutral" exposure="1.1" shadow-intensity="1" shadow-softness=".6" interaction-prompt="none"
+      min-camera-orbit="-Infinity 0deg 0.05m" max-camera-orbit="Infinity 180deg 60m" min-field-of-view="10deg" max-field-of-view="120deg" interpolation-decay="1000" alt="Product placed in camera view"></model-viewer>
+    <div class="cam-top"><span id="camTip">Drag to turn · move the slider to push it back toward the wall</span></div>
+    <div class="cam-ctl">
+      <label class="cam-row"><span>Distance</span><input type="range" id="camDist" min="1" max="8" step="0.1" value="3"><b id="camDistV">3.0 m</b></label>
+      <label class="cam-row"><span>Phone height</span><input type="range" id="camH" min="0.6" max="2" step="0.05" value="1.3"><b id="camHV">1.30 m</b></label>
+    </div>
     <div class="cam-bar">
       <button class="cam-btn" id="camClose">Close</button>
       <button class="cam-shot" id="camShot" aria-label="Take photo"></button>
@@ -230,7 +239,46 @@ function canCamera(){
   return mobile&&!framed&&window.isSecureContext&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 }
 const mv2=$('#mv2'),camVideo=$('#camVideo');let camStream=null;
+/* Virtual camera that copies the real one: same field of view, same height, turned by the phone's gyroscope.
+   The piece stands on the floor at the origin; the phone sits `dist` meters in front of it at `height` meters. */
+const V={dist:3,height:1.3,yaw0:null,yaw:0,pitch:-12,turn:0,fov:60,on:false};
+const D2R=Math.PI/180;
+function updateFov(){
+  const vw=camVideo.videoWidth||1080,vh=camVideo.videoHeight||1920,W=innerWidth,H=innerHeight;
+  const LONG=65*D2R; // typical main-camera field of view across the long side of the sensor
+  const vAsp=vw/vh;
+  let vf,hf;
+  if(vAsp<1){vf=LONG;hf=2*Math.atan(Math.tan(LONG/2)*vAsp)}else{hf=LONG;vf=2*Math.atan(Math.tan(LONG/2)/vAsp)}
+  const sAsp=W/H;
+  const visV=sAsp<vAsp?vf:2*Math.atan(Math.tan(hf/2)/sAsp); // object-fit: cover crops one side
+  V.fov=visV/D2R;
+}
+function applyCam(){
+  if(!V.on)return;
+  const th=-(V.yaw-(V.yaw0??V.yaw))*D2R, ph=(90+V.pitch)*D2R, r=V.dist;
+  const P=[0,V.height,V.dist];
+  const tx=P[0]-r*Math.sin(ph)*Math.sin(th),ty=P[1]-r*Math.cos(ph),tz=P[2]-r*Math.sin(ph)*Math.cos(th);
+  mv2.fieldOfView=V.fov.toFixed(2)+'deg';
+  mv2.cameraTarget=`${tx.toFixed(4)}m ${ty.toFixed(4)}m ${tz.toFixed(4)}m`;
+  mv2.cameraOrbit=`${th.toFixed(4)}rad ${ph.toFixed(4)}rad ${r.toFixed(3)}m`;
+  mv2.orientation=`0deg 0deg ${V.turn}deg`;
+  mv2.jumpCameraToGoal();
+}
+function onOrient(e){
+  if(e.beta==null)return;
+  const a=(e.alpha||0)*D2R,b=e.beta*D2R,g=(e.gamma||0)*D2R;
+  const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);
+  // direction the back camera points, in earth frame (x east, y north, z up)
+  const fx=-(ca*sg+sa*sb*cg),fy=-(sa*sg-ca*sb*cg),fz=-cb*cg;
+  const yaw=Math.atan2(fx,fy)/D2R,pitch=Math.asin(Math.max(-1,Math.min(1,fz)))/D2R;
+  if(V.yaw0==null){V.yaw0=yaw;V.yaw=yaw;V.pitch=pitch}
+  let dy=yaw-V.yaw;if(dy>180)dy-=360;if(dy<-180)dy+=360;
+  V.yaw+=dy*.35;V.pitch+=(pitch-V.pitch)*.35;
+  applyCam();
+}
 async function openCam(){
+  let orientAsk=null;
+  if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function')orientAsk=DeviceOrientationEvent.requestPermission().catch(()=>'denied');
   try{camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false})}
   catch(e){
     $('#arMsg').textContent=e&&e.name==='NotAllowedError'
@@ -238,18 +286,32 @@ async function openCam(){
       :'The camera could not start on this phone. Close other apps using the camera and try again.';
     return;
   }
+  if(orientAsk)await orientAsk;
   camVideo.srcObject=camStream;camVideo.play().catch(()=>{});
   $('#cam').hidden=false;document.body.style.overflow='hidden';
-  $('#camTip').textContent='Pinch to resize · drag to turn';
+  V.on=true;V.yaw0=null;V.turn=0;V.pitch=-12;
+  V.dist=Math.max(1.5,Math.min(8,+$('#camDist').value));
+  window.addEventListener('deviceorientation',onOrient);
+  updateFov();applyCam();
   if(mv2.src!==mv.src)mv2.src=mv.src;else applyColor(mv2);
 }
 function closeCam(){
+  V.on=false;window.removeEventListener('deviceorientation',onOrient);
   if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null;camVideo.srcObject=null;
   $('#cam').hidden=true;document.body.style.overflow='';
 }
-mv2.addEventListener('load',()=>applyColor(mv2));
+camVideo.addEventListener('loadedmetadata',()=>{updateFov();applyCam()});
+addEventListener('resize',()=>{updateFov();applyCam()});
+mv2.addEventListener('load',()=>{applyColor(mv2);applyCam()});
+$('#camDist').addEventListener('input',e=>{V.dist=+e.target.value;$('#camDistV').textContent=V.dist.toFixed(1)+' m';applyCam()});
+$('#camH').addEventListener('input',e=>{V.height=+e.target.value;$('#camHV').textContent=V.height.toFixed(2)+' m';applyCam()});
+let turnDrag=null;
+mv2.addEventListener('pointerdown',e=>{turnDrag={x:e.clientX,t:V.turn};mv2.setPointerCapture(e.pointerId)});
+mv2.addEventListener('pointermove',e=>{if(!turnDrag)return;V.turn=Math.round(turnDrag.t+(e.clientX-turnDrag.x)*.5);applyCam()});
+mv2.addEventListener('pointerup',()=>turnDrag=null);
+mv2.addEventListener('pointercancel',()=>turnDrag=null);
 $('#camClose').addEventListener('click',closeCam);
-$('#camReset').addEventListener('click',()=>{mv2.cameraOrbit='0deg 75deg auto';mv2.fieldOfView='auto';mv2.jumpCameraToGoal()});
+$('#camReset').addEventListener('click',()=>{V.yaw0=null;V.turn=0;applyCam();$('#camTip').textContent='Centered in front of you'});
 $('#camShot').addEventListener('click',async()=>{
   try{
     const W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1),c=document.createElement('canvas');

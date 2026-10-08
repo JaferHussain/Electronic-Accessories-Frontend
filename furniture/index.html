@@ -81,7 +81,14 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .cam-seg{display:flex;gap:4px;min-width:0}
 .cam-seg button{flex:1 1 0;min-width:0;border:0;border-radius:8px;padding:6px 4px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:600}
 .cam-seg button.on{background:#fff;color:#111}
-#aiView{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#aiView{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;transition:opacity .4s}
+#arCanvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.cam-ctl .cam-seg button{padding:9px 6px;font-size:13px}
+.cam-arrow{position:absolute;top:50%;left:12px;transform:translateY(-50%);background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:8px 14px;font-size:14px;pointer-events:none;display:flex;gap:6px;align-items:center}
+.cam-arrow[hidden]{display:none}
+.cam-arrow span{font-size:18px;display:inline-block}
+.cam-arrow.r{left:auto;right:12px;flex-direction:row-reverse}
+.cam-arrow.r span{transform:scaleX(-1)}
 .cam-row b{font:500 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 </style>
 
@@ -129,21 +136,18 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 
   <div class="cam" id="cam" hidden>
     <video id="camVideo" playsinline muted autoplay></video>
-    <model-viewer id="mv2" touch-action="none" disable-zoom disable-pan environment-image="neutral" exposure="1.1" shadow-intensity="1" shadow-softness=".6" interaction-prompt="none"
-      min-camera-orbit="-Infinity 0deg 0.05m" max-camera-orbit="Infinity 180deg 60m" min-field-of-view="10deg" max-field-of-view="120deg" interpolation-decay="1000" alt="Product placed in camera view"></model-viewer>
+    <canvas id="arCanvas" aria-label="Product placed in your room"></canvas>
     <canvas id="aiView" aria-hidden="true"></canvas>
+    <div class="cam-arrow" id="camArrow" hidden><span>←</span> <b id="camArrowT"></b></div>
     <div class="cam-top"><span id="camTip">Starting camera…</span></div>
     <div class="cam-ctl">
-      <div class="cam-row"><span>Placement</span>
-        <div class="cam-seg" id="camMode"><button data-m="auto" class="on">AI auto</button><button data-m="lock">Lock</button><button data-m="manual">Manual</button></div>
-        <b id="camAiV">–</b></div>
-      <label class="cam-row" id="distRow" hidden><span>Distance</span><input type="range" id="camDist" min="1" max="8" step="0.1" value="3"><b id="camDistV">3.0 m</b></label>
-      <label class="cam-row"><span>Phone height</span><input type="range" id="camH" min="0.6" max="2" step="0.05" value="1.3"><b id="camHV">1.30 m</b></label>
+      <div class="cam-seg" id="camMode"><button data-m="place">Place here with AI</button><button data-m="lock">Lock in place</button></div>
+      <label class="cam-row"><span>Phone height</span><input type="range" id="camH" min="0.6" max="2" step="0.05" value="1.35"><b id="camHV">1.35 m</b></label>
     </div>
     <div class="cam-bar">
       <button class="cam-btn" id="camClose">Close</button>
       <button class="cam-shot" id="camShot" aria-label="Take photo"></button>
-      <button class="cam-btn" id="camReset">Reset</button>
+      <button class="cam-btn" id="camReset">Recenter</button>
     </div>
   </div>
 
@@ -154,6 +158,8 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 import * as THREE from 'three';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 import { buildModel } from './models.js';
 
@@ -246,11 +252,13 @@ function canCamera(){
   const mobile=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
   return mobile&&!framed&&window.isSecureContext&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 }
-const mv2=$('#mv2'),camVideo=$('#camVideo');let camStream=null;
-/* Virtual camera that copies the real one (same field of view and height, turned by the gyroscope).
-   The piece stands on the floor at the world origin; the phone stands at (px, height, pz). */
-const V={height:1.3,dist:3,px:0,pz:3,psi:0,fixed:false,yaw0:null,yaw:0,pitch:-12,turn:0,fov:60,vf:65*Math.PI/180,hf:40*Math.PI/180,on:false,mode:'auto'};
+const camVideo=$('#camVideo'),arCanvas=$('#arCanvas');let camStream=null;
+/* Camera view, rendered with three.js over the live camera.
+   World: y up, floor at y=0, phone at (0, height, 0). The phone's full rotation (pitch, roll, turn) drives the 3D camera,
+   so a placed piece stays anchored to the same spot on the floor while you look around. */
 const D2R=Math.PI/180;
+const V={on:false,height:1.35,vf:65*D2R,hf:40*D2R,fov:60,mode:'place',placed:false,stable:0,turn:0,
+  target:{x:0,z:-2.5,rot:0},firstFix:true,searchStart:0};
 const setTip=t=>{$('#camTip').textContent=t};
 function updateFov(){
   const vw=camVideo.videoWidth||1080,vh=camVideo.videoHeight||1920,W=innerWidth,H=innerHeight;
@@ -260,37 +268,129 @@ function updateFov(){
   if(vAsp<1){vf=LONG;hf=2*Math.atan(Math.tan(LONG/2)*vAsp)}else{hf=LONG;vf=2*Math.atan(Math.tan(LONG/2)/vAsp)}
   V.vf=vf;V.hf=hf;
   const sAsp=W/H;
-  const visV=sAsp<vAsp?vf:2*Math.atan(Math.tan(hf/2)/sAsp); // object-fit: cover crops one side
-  V.fov=visV/D2R;
+  V.fov=(sAsp<vAsp?vf:2*Math.atan(Math.tan(hf/2)/sAsp))/D2R; // object-fit: cover crops one side
 }
-const curTheta=()=>-(V.yaw-(V.yaw0??V.yaw))*D2R;
-function applyCam(){
-  if(!V.on)return;
-  const th=curTheta(), ph=(90+V.pitch)*D2R, r=3;
-  const P=[V.px,V.height,V.pz];
-  const tx=P[0]-r*Math.sin(ph)*Math.sin(th),ty=P[1]-r*Math.cos(ph),tz=P[2]-r*Math.sin(ph)*Math.cos(th);
-  mv2.fieldOfView=V.fov.toFixed(2)+'deg';
-  mv2.cameraTarget=`${tx.toFixed(4)}m ${ty.toFixed(4)}m ${tz.toFixed(4)}m`;
-  mv2.cameraOrbit=`${th.toFixed(4)}rad ${ph.toFixed(4)}rad ${r}m`;
-  mv2.orientation=`0deg 0deg ${(V.psi/D2R+V.turn).toFixed(2)}deg`;
-  mv2.style.visibility=(V.mode==='auto'&&!V.fixed)?'hidden':'visible';
-  mv2.jumpCameraToGoal();
+
+/* ---------- 3D scene ---------- */
+let R=null;
+function initThree(){
+  if(R)return R;
+  const renderer=new THREE.WebGLRenderer({canvas:arCanvas,alpha:true,antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  const scene=new THREE.Scene();
+  const pm=new THREE.PMREMGenerator(renderer);
+  scene.environment=pm.fromScene(new RoomEnvironment(),0.04).texture;
+  scene.environmentIntensity=0.6;
+  const cam=new THREE.PerspectiveCamera(60,1,0.05,80);
+  const hemi=new THREE.HemisphereLight(0xffffff,0x8a7f70,0.6);scene.add(hemi);
+  const dir=new THREE.DirectionalLight(0xffffff,1.6);
+  dir.castShadow=true;dir.shadow.mapSize.set(1024,1024);dir.shadow.radius=5;dir.shadow.bias=-0.0006;dir.shadow.normalBias=0.02;
+  Object.assign(dir.shadow.camera,{left:-2.6,right:2.6,top:2.6,bottom:-2.6,near:0.1,far:14});
+  scene.add(dir,dir.target);
+  const root=new THREE.Group();root.visible=false;scene.add(root);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(6,6),new THREE.ShadowMaterial({opacity:0.3}));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;root.add(ground);
+  // soft contact shadow right under the piece, so it sits on the floor instead of floating
+  const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');
+  const gr=g.createRadialGradient(64,64,0,64,64,64);gr.addColorStop(0,'rgba(0,0,0,.6)');gr.addColorStop(.55,'rgba(0,0,0,.28)');gr.addColorStop(1,'rgba(0,0,0,0)');
+  g.fillStyle=gr;g.fillRect(0,0,128,128);
+  const blob=new THREE.Mesh(new THREE.PlaneGeometry(1,1),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,toneMapped:false}));
+  blob.rotation.x=-Math.PI/2;blob.position.y=0.003;root.add(blob);
+  const spin=new THREE.Group();root.add(spin);
+  R={renderer,scene,cam,root,spin,blob,hemi,dir,model:null,modelId:null,ray:new THREE.Raycaster(),floor:new THREE.Plane(new THREE.Vector3(0,1,0),0)};
+  return R;
 }
+const gltfLoader=new GLTFLoader();
+async function loadARModel(){
+  initThree();
+  if(R.modelId===cur.id){arRecolor();return}
+  const id=cur.id,url=mv.src||await modelUrl(cur);
+  const gltf=await gltfLoader.loadAsync(url);
+  if(id!==cur.id)return;
+  if(R.model)R.spin.remove(R.model);
+  const m=gltf.scene;m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
+  R.model=m;R.modelId=id;R.spin.add(m);arRecolor();
+  const size=new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
+  R.blob.scale.set(size.x*1.2+.1,size.z*1.2+.1,1);
+}
+function arRecolor(){
+  if(!R||!R.model)return;const hex=cur.colors[colorIdx][1];
+  R.model.traverse(o=>{if(o.isMesh&&o.material&&o.material.name==='Body'){o.material.color.set(hex);if(o.material.emissiveIntensity>0&&o.material.emissive.getHex())o.material.emissive.set(hex)}});
+}
+
+/* ---------- phone orientation -> 3D camera ---------- */
+const qRaw=new THREE.Quaternion(),qYaw=new THREE.Quaternion(),qGoal=new THREE.Quaternion(),qCam=new THREE.Quaternion();
+const _e=new THREE.Euler(),_q1=new THREE.Quaternion(-Math.SQRT1_2,0,0,Math.SQRT1_2),_q0=new THREE.Quaternion(),_z=new THREE.Vector3(0,0,1),_y=new THREE.Vector3(0,1,0);
+let haveOri=false,yawSet=false;
 function onOrient(e){
   if(e.beta==null)return;
-  const a=(e.alpha||0)*D2R,b=e.beta*D2R,g=(e.gamma||0)*D2R;
-  const ca=Math.cos(a),sa=Math.sin(a),cb=Math.cos(b),sb=Math.sin(b),cg=Math.cos(g),sg=Math.sin(g);
-  // direction the back camera points, in earth frame (x east, y north, z up)
-  const fx=-(ca*sg+sa*sb*cg),fy=-(sa*sg-ca*sb*cg),fz=-cb*cg;
-  const yaw=Math.atan2(fx,fy)/D2R,pitch=Math.asin(Math.max(-1,Math.min(1,fz)))/D2R;
-  if(V.yaw0==null){V.yaw0=yaw;V.yaw=yaw;V.pitch=pitch}
-  let dy=yaw-V.yaw;if(dy>180)dy-=360;if(dy<-180)dy+=360;
-  V.yaw+=dy*.35;V.pitch+=(pitch-V.pitch)*.35;
-  applyCam();
+  const so=((screen.orientation&&screen.orientation.angle)||window.orientation||0)*D2R;
+  _e.set((e.beta||0)*D2R,(e.alpha||0)*D2R,-(e.gamma||0)*D2R,'YXZ');
+  qRaw.setFromEuler(_e).multiply(_q1).multiply(_q0.setFromAxisAngle(_z,-so));
+  if(!yawSet){
+    const f=new THREE.Vector3(0,0,-1).applyQuaternion(qRaw);
+    qYaw.setFromAxisAngle(_y,-Math.atan2(-f.x,-f.z));yawSet=true;
+    qCam.copy(qYaw).multiply(qRaw);
+  }
+  haveOri=true;
+}
+
+/* ---------- room light: match brightness and colour of the camera picture ---------- */
+const lightCv=document.createElement('canvas'),lightCx=lightCv.getContext('2d',{willReadFrequently:true});
+const Lt={lum:.5,r:1,g:1,b:1,side:.4,at:0};
+function sampleLight(now){
+  if(now-Lt.at<500||camVideo.readyState<2)return;Lt.at=now;
+  lightCv.width=24;lightCv.height=32;lightCx.drawImage(camVideo,0,0,24,32);
+  const d=lightCx.getImageData(0,0,24,32).data;let r=0,g=0,b=0,left=0,right=0;
+  for(let i=0;i<d.length;i+=4){const x=(i/4)%24,l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];r+=d[i];g+=d[i+1];b+=d[i+2];if(x<12)left+=l;else right+=l}
+  const n=d.length/4;r/=n;g/=n;b/=n;const mx=Math.max(r,g,b,1);
+  const k=.3;Lt.lum+=((.2126*r+.7152*g+.0722*b)/255-Lt.lum)*k;
+  Lt.r+=(r/mx-Lt.r)*k;Lt.g+=(g/mx-Lt.g)*k;Lt.b+=(b/mx-Lt.b)*k;
+  Lt.side+=(Math.max(-1,Math.min(1,(right-left)/(right+left+1)*4))-Lt.side)*k;
+}
+
+/* ---------- render loop ---------- */
+const _v=new THREE.Vector3();
+function frame(now){
+  if(!V.on)return;requestAnimationFrame(frame);
+  const {renderer,cam,root,spin,hemi,dir}=R;
+  const W=innerWidth,H=innerHeight;
+  if(renderer.domElement.width!==Math.round(W*renderer.getPixelRatio())||renderer.domElement.height!==Math.round(H*renderer.getPixelRatio()))renderer.setSize(W,H,false);
+  if(haveOri){qGoal.copy(qYaw).multiply(qRaw);qCam.slerp(qGoal,.45);cam.quaternion.copy(qCam)}
+  else cam.quaternion.setFromEuler(_e.set(-14*D2R,0,0,'YXZ'));
+  cam.position.set(0,V.height,0);cam.fov=V.fov;cam.aspect=W/H;cam.updateProjectionMatrix();
+  // glide to the target spot
+  const t=V.target,k=V.firstFix?1:.15;
+  root.position.x+=(t.x-root.position.x)*k;root.position.z+=(t.z-root.position.z)*k;
+  let dr=t.rot-root.rotation.y;while(dr>Math.PI)dr-=2*Math.PI;while(dr<-Math.PI)dr+=2*Math.PI;root.rotation.y+=dr*k;
+  V.firstFix=false;
+  spin.rotation.y=V.turn*D2R;R.blob.rotation.z=V.turn*D2R;
+  // lights follow the room picture
+  sampleLight(now);
+  hemi.color.setRGB(Lt.r,Lt.g,Lt.b);hemi.groundColor.setRGB(Lt.r*.55,Lt.g*.5,Lt.b*.45);
+  hemi.intensity=.25+Lt.lum*.9;dir.intensity=.4+Lt.lum*1.5;dir.color.setRGB(.6+.4*Lt.r,.6+.4*Lt.g,.6+.4*Lt.b);
+  renderer.toneMappingExposure=Math.max(.5,Math.min(1.1,.45+Lt.lum*.75));
+  dir.position.set(root.position.x+Lt.side*2.2,4,root.position.z+1.6);dir.target.position.copy(root.position);
+  renderer.render(R.scene,cam);
+  updateArrow();
+}
+function updateArrow(){
+  const el=$('#camArrow');
+  if(!R.root.visible){el.hidden=true;return}
+  _v.set(R.root.position.x,.4,R.root.position.z).project(R.cam);
+  const local=_v.clone();
+  const inView=local.z<1&&Math.abs(local.x)<1.05&&Math.abs(local.y)<1.05;
+  if(inView){el.hidden=true;return}
+  const camSpace=new THREE.Vector3(R.root.position.x,.4,R.root.position.z).applyMatrix4(R.cam.matrixWorldInverse);
+  el.hidden=false;el.classList.toggle('r',camSpace.x>0);
+  $('#camArrowT').textContent=cur.name.split(' ').slice(0,2).join(' ')+' is this way';
 }
 
 /* ---------- On-device AI: SegFormer-B0 (ADE20K, open source) finds floor and walls ---------- */
-const AI={model:null,proc:null,RawImage:null,loading:null,busy:false,failed:false,timer:0};
+const AI={model:null,proc:null,RawImage:null,loading:null,busy:false,failed:false,timer:0,tap:null};
 const grab=document.createElement('canvas'),gctx=grab.getContext('2d',{willReadFrequently:true});
 let placer=null;
 function loadAI(){
@@ -314,79 +414,126 @@ const MSG={
   'tilt-down':'Tilt the phone down a little so the AI can see where the floor meets the wall',
   'no-wall':'No wall found. Aim at a wall, or step back so it is in view',
 };
+// heading frame of a camera pose: a = metres right, b = metres ahead on the floor
+function headingFrame(q){
+  const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);fwd.y=0;
+  if(fwd.lengthSq()<1e-6)fwd.set(0,0,-1);fwd.normalize();
+  return {fwd,right:new THREE.Vector3(-fwd.z,0,fwd.x)};
+}
+function makeHit(q,h){
+  const tH=Math.tan(V.hf/2),tV=Math.tan(V.vf/2),{fwd,right}=headingFrame(q),d=new THREE.Vector3();
+  return {fwd,right,hit:(uf,vf)=>{
+    d.set((uf-.5)*2*tH,-(vf-.5)*2*tV,-1).applyQuaternion(q);
+    if(d.y>-1e-3)return null;
+    const t=h/-d.y,px=d.x*t,pz=d.z*t;
+    return {a:px*right.x+pz*right.z,b:px*fwd.x+pz*fwd.z};
+  }};
+}
+function toWorld(p,H){
+  const x=p.a*H.right.x+p.b*H.fwd.x,z=p.a*H.right.z+p.b*H.fwd.z;
+  const fx=p.front.a*H.right.x+p.front.b*H.fwd.x,fz=p.front.a*H.right.z+p.front.b*H.fwd.z;
+  return {x,z,rot:Math.atan2(fx,fz)};
+}
+function setTarget(t,jump){
+  const prev=V.target;
+  const moved=Math.hypot(t.x-prev.x,t.z-prev.z);let dr=Math.abs(t.rot-prev.rot)%(2*Math.PI);if(dr>Math.PI)dr=2*Math.PI-dr;
+  V.stable=(V.placed&&moved<.2&&dr<8*D2R)?V.stable+1:0;
+  V.target=t;
+  if(!V.placed||jump){V.firstFix=true}
+  V.placed=true;R.root.visible=true;
+}
 async function runAI(){
   AI.timer=0;
-  if(!V.on||V.mode!=='auto'||AI.busy||!AI.model)return;
+  if(!V.on||AI.busy||!AI.model)return;
+  if(V.mode!=='place'&&!AI.tap)return;
   if(camVideo.readyState<2){AI.timer=setTimeout(runAI,300);return}
-  AI.busy=true;
+  AI.busy=true;const tap=AI.tap;AI.tap=null;
   try{
     const vw=camVideo.videoWidth,vh=camVideo.videoHeight,k=320/Math.max(vw,vh),w=Math.round(vw*k),h=Math.round(vh*k);
     grab.width=w;grab.height=h;gctx.drawImage(camVideo,0,0,w,h);
-    const pose={pitch:V.pitch*D2R,th:curTheta(),height:V.height};
+    const q=R.cam.quaternion.clone(),Hf=makeHit(q,V.height);
     const img=new AI.RawImage(gctx.getImageData(0,0,w,h).data,w,h,4).rgb();
     const out=await AI.model(await AI.proc(img));
     const lg=out.logits,[,C,gh,gw]=lg.dims,d=lg.data,N=gw*gh,labels=new Uint8Array(N);
     for(let i=0;i<N;i++){let best=-1e9,bi=0;for(let c=0;c<C;c++){const v=d[c*N+i];if(v>best){best=v;bi=c}}labels[i]=bi}
-    if(V.mode!=='auto'||!V.on)return;
-    const res=placer.analyze(labels,gw,gh,{hfov:V.hf,vfov:V.vf,pitch:pose.pitch,height:pose.height});
-    drawAIView(labels,gw,gh,res);
-    if(res.ok){
-      const p=placer.place(cur.id,cur.size[2]/100,cur.size[0]/100,res);
-      setWorld(p,pose.th);
-      $('#camAiV').textContent=res.c.toFixed(1)+' m';
-      setTip(`Wall ${res.c.toFixed(1)} m away · placed ${p.nature}`);
+    if(!V.on)return;
+    const res=placer.analyze(labels,gw,gh,Hf.hit);
+    if(V.mode==='place')drawAIView(labels,gw,gh,res);
+    const dims=[cur.size[2]/100,cur.size[0]/100];
+    if(tap){
+      // tap: put it where the finger was, pushed against the wall if this piece belongs there
+      const ta=tap.x*Hf.right.x+tap.z*Hf.right.z,tb=tap.x*Hf.fwd.x+tap.z*Hf.fwd.z;
+      const nat=placer.NATURE[cur.id]||{};
+      if(res.ok&&nat.kind==='wall'&&tb>res.c-2){
+        const p=placer.place(cur.id,dims[0],dims[1],{...res,aMin:Math.min(res.aMin,ta),aMax:Math.max(res.aMax,ta)},ta);
+        setTarget(toWorld(p,Hf),true);setTip(`Moved and set ${p.nature}`);
+      }else{
+        const front=res.ok?{a:res.m/Math.hypot(res.m,1),b:-1/Math.hypot(res.m,1)}:{a:-ta,b:-tb};
+        const fl=Math.hypot(front.a,front.b)||1;
+        setTarget(toWorld({a:ta,b:tb,front:{a:front.a/fl,b:front.b/fl}},Hf),true);setTip('Moved to where you tapped');
+      }
+      setMode('lock',true);
+    }else if(res.ok){
+      const p=placer.place(cur.id,dims[0],dims[1],res);
+      setTarget(toWorld(p,Hf));
+      if(V.stable>=2){setMode('lock',true);setTip(`Placed ${p.nature} · wall ${res.c.toFixed(1)} m away. Tap the floor to move it.`)}
+      else setTip(`Wall ${res.c.toFixed(1)} m away · fitting ${p.nature}… hold still`);
     }else{
       setTip(MSG[res.reason]||'Looking for the floor…');
+      if(!V.placed&&performance.now()-V.searchStart>9000)fallbackPlace('AI could not find a wall here. Tap the floor where you want it.');
     }
   }catch(e){
-    AI.failed=true;setMode('manual');
-    setTip('The AI model could not run on this phone. Set the distance by hand.');
+    AI.failed=true;
+    fallbackPlace('The AI model could not run on this phone. Tap the floor where you want it.');
   }finally{
     AI.busy=false;
-    if(V.on&&V.mode==='auto'&&!AI.failed)AI.timer=setTimeout(runAI,350);
+    if(V.on&&!AI.failed&&(V.mode==='place'||AI.tap))AI.timer=setTimeout(runAI,300);
   }
 }
-// camera-frame placement (a right, b ahead, front direction) -> world, keeping the piece at the origin
-function setWorld(p,th){
-  const R=[Math.cos(th),-Math.sin(th)],F=[-Math.sin(th),-Math.cos(th)];
-  const tx=-(p.a*R[0]+p.b*F[0]),tz=-(p.a*R[1]+p.b*F[1]);
-  const fx=p.front.a*R[0]+p.front.b*F[0],fz=p.front.a*R[1]+p.front.b*F[1],tpsi=Math.atan2(fx,fz);
-  if(!V.fixed){V.px=tx;V.pz=tz;V.psi=tpsi;V.fixed=true}
-  else{
-    const k=.35;V.px+=(tx-V.px)*k;V.pz+=(tz-V.pz)*k;
-    let dp=tpsi-V.psi;while(dp>Math.PI)dp-=2*Math.PI;while(dp<-Math.PI)dp+=2*Math.PI;V.psi+=dp*k;
-  }
-  applyCam();
+function fallbackPlace(msg){
+  if(!V.placed){const Hf=headingFrame(R.cam.quaternion);setTarget(toWorld({a:0,b:2.5,front:{a:0,b:-1}},Hf),true)}
+  setMode('lock',true);setTip(msg);
 }
 function drawAIView(labels,gw,gh,res){
   const cv=$('#aiView'),dpr=Math.min(2,devicePixelRatio||1),W=innerWidth,H=innerHeight;
-  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.opacity=1;
   const x=cv.getContext('2d');x.scale(dpr,dpr);
   const vw=camVideo.videoWidth,vh=camVideo.videoHeight,s=Math.max(W/vw,H/vh),ox=(W-vw*s)/2,oy=(H-vh*s)/2,cw=vw*s/gw,ch=vh*s/gh;
-  x.fillStyle='rgba(80,220,140,.20)';
+  x.fillStyle='rgba(80,220,140,.18)';
   for(let r=0;r<gh;r++){let run=-1;
     for(let c=0;c<=gw;c++){const f=c<gw&&placer.FLOOR_IDS.has(labels[r*gw+c]);
       if(f&&run<0)run=c;else if(!f&&run>=0){x.fillRect(ox+run*cw,oy+r*ch,(c-run)*cw+.5,ch+.5);run=-1}}}
   if(res.rows){x.fillStyle=res.ok?'#ffd166':'rgba(255,209,102,.5)';
     for(const p of res.rows){x.beginPath();x.arc(ox+(p.c+.5)*cw,oy+p.r*ch,3,0,7);x.fill()}}
 }
-function clearAIView(){const cv=$('#aiView');cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}
-function setMode(m){
+function setMode(m,quiet){
   V.mode=m;
   document.querySelectorAll('#camMode button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
-  $('#distRow').hidden=m!=='manual';
-  clearTimeout(AI.timer);AI.timer=0;
-  if(m==='manual'){clearAIView();V.yaw0=null;V.px=0;V.pz=V.dist;V.psi=0;V.fixed=true;setTip('Drag to turn · use Distance to push it back toward the wall')}
-  if(m==='lock'){clearAIView();setTip(V.fixed?'Locked. Walk the phone around to look at it.':'Nothing placed yet. Switch to AI auto first.')}
-  if(m==='auto'){
-    if(AI.failed){setMode('manual');return}
-    V.fixed=false;$('#camAiV').textContent='–';
-    loadAI().then(()=>{if(V.on&&V.mode==='auto'&&!AI.timer&&!AI.busy){setTip('Point at the floor where it meets the wall');runAI()}})
-      .catch(()=>{AI.failed=true;setMode('manual');setTip('The AI model could not load. Check your internet, or set the distance by hand.')});
+  if(m==='lock'){$('#aiView').style.opacity=0;clearTimeout(AI.timer);AI.timer=0;if(!quiet)setTip(V.placed?'Locked. Look around, it stays on that spot. Tap the floor to move it.':'Nothing placed yet.')}
+  if(m==='place'){
+    V.stable=0;V.searchStart=performance.now();
+    if(AI.failed){fallbackPlace('The AI model is not available on this phone. Tap the floor where you want it.');return}
+    if(!quiet)setTip('Point at the floor where it meets the wall');
+    loadAI().then(()=>{if(V.on&&V.mode==='place'&&!AI.timer&&!AI.busy)runAI()})
+      .catch(()=>{AI.failed=true;fallbackPlace('The AI model could not load. Check your internet, then tap the floor where you want it.')});
   }
-  applyCam();
 }
 $('#camMode').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)});
+
+/* ---------- touch: tap the floor to move, drag sideways to turn ---------- */
+let touch=null;
+arCanvas.addEventListener('pointerdown',e=>{touch={x:e.clientX,y:e.clientY,t:performance.now(),turn:V.turn,drag:false};arCanvas.setPointerCapture(e.pointerId)});
+arCanvas.addEventListener('pointermove',e=>{if(!touch)return;const dx=e.clientX-touch.x;if(Math.abs(dx)>10)touch.drag=true;if(touch.drag&&V.placed)V.turn=Math.round(touch.turn+dx*.5)});
+arCanvas.addEventListener('pointerup',e=>{
+  const t=touch;touch=null;if(!t||t.drag)return;
+  const ndc=new THREE.Vector2(e.clientX/innerWidth*2-1,-(e.clientY/innerHeight)*2+1);
+  R.ray.setFromCamera(ndc,R.cam);const hit=new THREE.Vector3();
+  if(!R.ray.ray.intersectPlane(R.floor,hit)||Math.hypot(hit.x,hit.z)>10){setTip('Tap on the floor, not the wall or ceiling');return}
+  if(AI.model&&!AI.failed){AI.tap={x:hit.x,z:hit.z};setTip('Fitting it there…');if(!AI.busy){clearTimeout(AI.timer);runAI()}}
+  else{const Hf=headingFrame(R.cam.quaternion);const a=hit.x*Hf.right.x+hit.z*Hf.right.z,b=hit.x*Hf.fwd.x+hit.z*Hf.fwd.z,l=Math.hypot(a,b)||1;
+    setTarget(toWorld({a,b,front:{a:-a/l,b:-b/l}},Hf),true);setMode('lock',true);setTip('Moved to where you tapped')}
+});
+arCanvas.addEventListener('pointercancel',()=>touch=null);
 
 async function openCam(){
   let orientAsk=null;
@@ -401,40 +548,32 @@ async function openCam(){
   if(orientAsk)await orientAsk;
   camVideo.srcObject=camStream;camVideo.play().catch(()=>{});
   $('#cam').hidden=false;document.body.style.overflow='hidden';
-  V.on=true;V.yaw0=null;V.turn=0;V.pitch=-12;
+  initThree();
+  V.on=true;V.placed=false;V.turn=0;R.root.visible=false;yawSet=false;haveOri=false;
   window.addEventListener('deviceorientation',onOrient);
-  updateFov();
-  if(mv2.src!==mv.src)mv2.src=mv.src;else applyColor(mv2);
-  setMode(AI.failed?'manual':'auto');
+  updateFov();requestAnimationFrame(frame);
+  loadARModel().catch(()=>setTip('The 3D model could not load. Close and try again.'));
+  setMode('place');
 }
 function closeCam(){
   V.on=false;clearTimeout(AI.timer);AI.timer=0;window.removeEventListener('deviceorientation',onOrient);
   if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null;camVideo.srcObject=null;
-  clearAIView();$('#cam').hidden=true;document.body.style.overflow='';
+  $('#aiView').style.opacity=0;$('#cam').hidden=true;document.body.style.overflow='';
 }
-camVideo.addEventListener('loadedmetadata',()=>{updateFov();applyCam()});
-addEventListener('resize',()=>{updateFov();applyCam()});
-mv2.addEventListener('load',()=>{applyColor(mv2);applyCam()});
-$('#camDist').addEventListener('input',e=>{V.dist=+e.target.value;$('#camDistV').textContent=V.dist.toFixed(1)+' m';if(V.mode==='manual'){V.pz=V.dist;applyCam()}});
-$('#camH').addEventListener('input',e=>{V.height=+e.target.value;$('#camHV').textContent=V.height.toFixed(2)+' m';applyCam()});
-let turnDrag=null;
-mv2.addEventListener('pointerdown',e=>{turnDrag={x:e.clientX,t:V.turn};mv2.setPointerCapture(e.pointerId)});
-mv2.addEventListener('pointermove',e=>{if(!turnDrag)return;V.turn=Math.round(turnDrag.t+(e.clientX-turnDrag.x)*.5);applyCam()});
-mv2.addEventListener('pointerup',()=>turnDrag=null);
-mv2.addEventListener('pointercancel',()=>turnDrag=null);
+camVideo.addEventListener('loadedmetadata',updateFov);
+addEventListener('resize',updateFov);
+$('#camH').addEventListener('input',e=>{V.height=+e.target.value;$('#camHV').textContent=V.height.toFixed(2)+' m'});
 $('#camClose').addEventListener('click',closeCam);
-$('#camReset').addEventListener('click',()=>{V.turn=0;if(V.mode==='manual'){V.yaw0=null}else setMode('auto');applyCam();});
-$('#camShot').addEventListener('click',async()=>{
+$('#camReset').addEventListener('click',()=>{yawSet=false;V.turn=0;V.placed=false;R.root.visible=false;setMode('place')});
+$('#camShot').addEventListener('click',()=>{
   try{
     const W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1),c=document.createElement('canvas');
     c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);const x=c.getContext('2d');
     const vw=camVideo.videoWidth,vh=camVideo.videoHeight,s=Math.max(c.width/vw,c.height/vh);
     x.drawImage(camVideo,(c.width-vw*s)/2,(c.height-vh*s)/2,vw*s,vh*s);
-    const bmp=await createImageBitmap(await mv2.toBlob({idealAspect:false}));
-    x.drawImage(bmp,0,0,c.width,c.height);
-    c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${cur.id}-in-my-room.jpg`;document.body.appendChild(a);a.click();a.remove();
-      $('#camTip').textContent='Photo saved';},'image/jpeg',.9);
-  }catch(e){$('#camTip').textContent='Could not take the photo on this phone.'}
+    x.drawImage(arCanvas,0,0,c.width,c.height);
+    c.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`${cur.id}-in-my-room.jpg`;document.body.appendChild(a);a.click();a.remove();setTip('Photo saved')},'image/jpeg',.9);
+  }catch(e){setTip('Could not take the photo on this phone.')}
 });
 mv.addEventListener('ar-status',e=>{
   if(e.detail.status==='failed')$('#arMsg').textContent='AR could not start. Allow camera access, move to a brighter spot with a clear flat surface, and try again.';
@@ -446,7 +585,7 @@ $('#arBtn').addEventListener('click',()=>{
   $('#arMsg').parentElement.animate([{transform:'translateX(-4px)'},{transform:'translateX(4px)'},{transform:'none'}],{duration:220});
 });
 $('#strip').addEventListener('click',e=>{const b=e.target.closest('[data-id]');if(b&&b.dataset.id!==cur.id)show(PRODUCTS.find(p=>p.id===b.dataset.id))});
-$('#swatches').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(!b)return;colorIdx=+b.dataset.i;renderPanel();applyColor()});
+$('#swatches').addEventListener('click',e=>{const b=e.target.closest('[data-i]');if(!b)return;colorIdx=+b.dataset.i;renderPanel();applyColor();arRecolor()});
 
 customElements.whenDefined('model-viewer').then(()=>show(cur));
 renderStrip();renderPanel();

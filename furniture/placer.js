@@ -28,7 +28,9 @@ export function floorHit(uf, vf, cam) {
 }
 
 // labels: Int/Uint array of class ids, row-major, gw x gh, row 0 = top of the frame.
-export function analyze(labels, gw, gh, cam) {
+// hit(uf, vf) -> {a, b} floor point in the heading frame, or null (or a camera object for floorHit).
+export function analyze(labels, gw, gh, hit) {
+  if (typeof hit !== 'function') { const cam = hit; hit = (u, v) => floorHit(u, v, cam); }
   const isFloor = (c, r) => FLOOR_IDS.has(labels[r * gw + c]);
   let floorCount = 0;
   for (let i = 0; i < labels.length; i++) if (FLOOR_IDS.has(labels[i])) floorCount++;
@@ -50,9 +52,9 @@ export function analyze(labels, gw, gh, cam) {
       else if (++gap > Math.max(2, gh * 0.02)) break;
     }
     if (top <= 1) { reachTop++; continue; }
-    const hit = floorHit((c + 0.5) / gw, top / gh, cam);
-    if (!hit || hit.b < 0.4 || hit.b > 12) continue;
-    pts.push(hit); rows.push({ c, r: top });
+    const h = hit((c + 0.5) / gw, top / gh);
+    if (!h || h.b < 0.4 || h.b > 12) continue;
+    pts.push(h); rows.push({ c, r: top });
   }
   if (pts.length < 5) {
     return { ok: false, reason: reachTop > cols * 0.5 ? 'tilt-down' : 'no-wall', floorFrac, rows };
@@ -77,7 +79,7 @@ export function analyze(labels, gw, gh, cam) {
 }
 
 // Where the product goes, in the camera frame. Returns centre (a, b) and the direction its front faces.
-export function place(id, depthM, widthM, wall) {
+export function place(id, depthM, widthM, wall, atA) {
   const nat = NATURE[id] || NATURE.sofa;
   const { m, c } = wall;
   const nlen = Math.hypot(m, 1);
@@ -88,7 +90,8 @@ export function place(id, depthM, widthM, wall) {
   }
   // slide along the wall for side pieces, but stay inside what the camera saw
   let a0 = 0;
-  if (nat.side) {
+  if (atA != null) a0 = Math.max(wall.aMin, Math.min(wall.aMax, atA));
+  else if (nat.side) {
     const half = Math.max(0.3, (wall.aMax - wall.aMin) / 2);
     a0 = Math.max(wall.aMin + widthM / 2, Math.min(wall.aMax - widthM / 2, nat.side * half));
     if (!(wall.aMax - wall.aMin > widthM)) a0 = 0;

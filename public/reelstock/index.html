@@ -6,7 +6,7 @@
 <title>ReelStock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&family=Noto+Nastaliq+Urdu:wght@500;700&display=swap">
 <style>
 /* Layout: one-column tool — key setup strip, search bar, then a portrait-first clip grid like a phone camera roll */
 :root{
@@ -54,11 +54,29 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .tags{font-size:.82rem;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .by{font-size:.78rem;color:var(--muted)}
 .by a{color:inherit}
-.actions{display:flex;gap:6px;margin-top:auto}
-.actions select{flex:1 1 auto;padding:7px 8px;font-size:.82rem}
+.actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.actions select{flex:1 1 100%;padding:7px 8px;font-size:.82rem}
+.actions button{flex:1 1 auto}
 .actions button{padding:7px 12px;font-size:.85rem}
 .more{align-self:center}
 .note{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+.actions .ghost{background:transparent}
+.studio h2{font:800 1.6rem/1.1 var(--display);margin:0;letter-spacing:-.01em}
+.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.step{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.step h3{margin:0;font:600 1rem/1.3 var(--body);display:flex;gap:8px;align-items:center}
+.step h3 b{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font:600 .8rem/1 var(--mono)}
+.clipbox{display:flex;gap:10px;align-items:center}
+.clipbox video{width:72px;aspect-ratio:9/16;object-fit:cover;border-radius:8px;background:var(--tag);flex:none}
+textarea{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-height:150px;resize:vertical;width:100%}
+textarea.ur{font-family:"Noto Nastaliq Urdu",serif;line-height:2.1;direction:rtl}
+audio,.result video{width:100%;max-width:100%}
+.result{display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.result video{max-height:70vh;width:auto;border-radius:12px;background:#000}
+.check{display:flex;gap:8px;align-items:center;font-size:.92rem}
+.rec{color:var(--warn);border-color:var(--warn)}
+details summary{cursor:pointer;font-size:.9rem;color:var(--muted)}
+details[open] summary{margin-bottom:8px}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 </head>
@@ -101,6 +119,67 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 
   <div class="grid" id="grid"></div>
   <button class="more" id="more" hidden>Load more</button>
+
+  <section class="panel studio" id="studio" aria-labelledby="studio-h">
+    <h2 id="studio-h">Story Reel Studio</h2>
+    <p class="hint">Clip chunein, story likhein ya library se lein, us ki awaaz banayein, aur ek hi video mein jor kar download karein.</p>
+    <div class="steps">
+      <div class="step">
+        <h3><b>1</b> Clip</h3>
+        <div class="clipbox">
+          <video id="clipPrev" muted playsinline loop></video>
+          <p class="hint" id="clipInfo">Upar kisi video par <strong>Story</strong> dabayein, ya apni video file chunein.</p>
+        </div>
+        <label class="hint" for="clipFile">Apni video file</label>
+        <input type="file" id="clipFile" accept="video/*">
+      </div>
+
+      <div class="step">
+        <h3><b>2</b> Story</h3>
+        <div class="row">
+          <select id="storyPick" aria-label="Story library"></select>
+          <button type="button" id="storyRandom">Random</button>
+        </div>
+        <textarea id="storyText" aria-label="Story text"></textarea>
+      </div>
+
+      <div class="step">
+        <h3><b>3</b> Awaaz</h3>
+        <div class="row">
+          <button type="button" class="primary" id="ttsBtn">AI awaaz banayein</button>
+          <button type="button" id="recBtn">Mic se record</button>
+        </div>
+        <details>
+          <summary>AI awaaz settings (ElevenLabs)</summary>
+          <div class="row">
+            <input type="password" id="elKey" placeholder="ElevenLabs API key" autocomplete="off">
+            <input type="text" id="elVoice" placeholder="Voice ID" value="JBFqnCBsd6RMkjVDRZzb">
+            <select id="elModel" aria-label="Voice model">
+              <option value="eleven_multilingual_v2">Multilingual v2</option>
+              <option value="eleven_v3">v3 (Urdu behtar)</option>
+            </select>
+          </div>
+          <p class="hint">Free key: <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">elevenlabs.io</a> (har mahine kuch hazar characters free).</p>
+        </details>
+        <label class="hint" for="audioFile">Ya apni audio file</label>
+        <input type="file" id="audioFile" accept="audio/*">
+        <audio id="audioPrev" controls hidden></audio>
+      </div>
+
+      <div class="step">
+        <h3><b>4</b> Video banayein</h3>
+        <label class="check"><input type="checkbox" id="capOn" checked> Story ke subtitles video par likhein</label>
+        <label class="check"><input type="checkbox" id="origOn"> Clip ki asli awaaz bhi halki si rakhein</label>
+        <button type="button" class="primary" id="makeBtn">Story video banayein</button>
+        <p class="hint">Video asli waqt mein banti hai (jitni lambi story, utna waqt). Is dauran page khula rakhein.</p>
+      </div>
+    </div>
+    <div class="status" id="studioStatus" role="status"></div>
+    <div class="result" id="result" hidden>
+      <video id="resultVid" controls playsinline></video>
+      <button type="button" class="primary" id="resultDl">Download story video</button>
+    </div>
+  </section>
 
   <p class="note">License: Pexels aur Pixabay ki videos free hain aur Reels/ads mein use ho sakti hain, lekin clip ko bina badle bechna ya us mein dikhaye logon/brands ko apne product ka endorsement batana mana hai. Facebook original content ko zyada reach deta hai, is liye stock clip ke saath apni voice-over, text ya apni footage zaroor milayein.</p>
 </div>
@@ -224,7 +303,9 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
     it.files.forEach(function(f, i){ var op = document.createElement("option"); op.value = i; op.textContent = f.label; sel.appendChild(op); });
     var btn = document.createElement("button"); btn.className = "primary"; btn.textContent = "Download";
     btn.addEventListener("click", function(){ download(it.files[sel.value], it.id, btn); });
-    act.appendChild(sel); act.appendChild(btn);
+    var sb = document.createElement("button"); sb.className = "ghost"; sb.textContent = "Story";
+    sb.addEventListener("click", function(){ window.ReelStudio.useClip(it); });
+    act.appendChild(sel); act.appendChild(btn); act.appendChild(sb);
     m.appendChild(tg); m.appendChild(by); m.appendChild(act);
     c.appendChild(t); c.appendChild(m);
     $("grid").appendChild(c);
@@ -244,6 +325,208 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
       btn.textContent = "Opened";
     }).finally(function(){ setTimeout(function(){ btn.textContent = old; btn.disabled = false; }, 2000); });
   }
+})();
+</script>
+<script>
+(function(){
+  var $ = function(id){ return document.getElementById(id); };
+  var store = {
+    get: function(k){ try { return localStorage.getItem(k) || ""; } catch(e){ return ""; } },
+    set: function(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+  };
+  // Original short stories written for this tool (free to use).
+  var STORIES = [
+    { t: "ایماندار دکاندار", s: "ایک چھوٹے سے بازار میں احمد کی موبائل کی دکان تھی۔ ایک دن ایک بوڑھی عورت آئی اور مہنگا چارجر مانگا۔ احمد نے اس کا فون دیکھا اور کہا، اماں جی، آپ کو نیا چارجر نہیں چاہیے، صرف کیبل خراب ہے۔ اس نے سو روپے کی کیبل بدل دی۔ عورت دعائیں دیتی چلی گئی۔ اگلے مہینے وہ اپنے تین بیٹوں کے ساتھ آئی، اور تینوں نے نئے فون احمد ہی سے خریدے۔ سچائی کبھی گھاٹے کا سودا نہیں ہوتی۔" },
+    { t: "دو بیج", s: "ایک کسان نے اپنے دو بیٹوں کو ایک ایک بیج دیا۔ بڑے بیٹے نے بیج ایک خوبصورت ڈبے میں سنبھال کر رکھ دیا۔ چھوٹے بیٹے نے اسے مٹی میں بو دیا اور روز پانی دیتا رہا۔ ایک سال بعد کسان نے پوچھا، تمہارے بیج کہاں ہیں؟ بڑے بیٹے نے ڈبہ کھولا تو بیج سوکھ چکا تھا۔ چھوٹا بیٹا باپ کو باغ میں لے گیا جہاں ایک ننھا درخت پھل دے رہا تھا۔ موقع سنبھال کر رکھنے سے نہیں، استعمال کرنے سے بڑھتا ہے۔" },
+    { t: "آخری گھر", s: "ایک مستری تیس سال سے ایک ٹھیکیدار کے لیے گھر بنا رہا تھا۔ ریٹائرمنٹ سے پہلے ٹھیکیدار نے کہا، بس ایک آخری گھر اور بنا دو۔ مستری تھکا ہوا تھا، اس نے سستا سامان لگایا اور جلدی میں کام ختم کر دیا۔ چابی دیتے وقت ٹھیکیدار مسکرایا اور بولا، یہ گھر میری طرف سے تمہارا تحفہ ہے۔ مستری کو بہت افسوس ہوا۔ ہم روز اپنی زندگی کا گھر خود بنا رہے ہوتے ہیں، اس لیے ہر اینٹ دل سے لگائیں۔" },
+    { t: "ترپال", s: "ایک لڑکا روز اسکول جاتے ہوئے دیکھتا کہ ایک بوڑھا آدمی سڑک کنارے بیٹھ کر جوتے مرمت کرتا ہے۔ ایک دن تیز بارش ہوئی اور بوڑھے کا سامان بھیگنے لگا۔ لڑکے نے اپنے جیب خرچ سے ایک ترپال خریدا اور خاموشی سے اس کی جگہ پر باندھ دیا۔ کئی سال بعد وہ نوکری کے انٹرویو کے لیے جا رہا تھا کہ اس کا جوتا پھٹ گیا۔ وہی بوڑھا سامنے بیٹھا تھا۔ اس نے جوتا ٹھیک کیا، پیسے لینے سے انکار کیا اور کہا، بیٹا، وہ ترپال میں آج تک نہیں بھولا۔ نیکی ہمیشہ لوٹ کر آتی ہے۔" },
+    { t: "The Last Power Bank", s: "During a city-wide blackout, a young man had one fully charged power bank. His neighbor's daughter needed her phone to call a doctor. He handed it over without a second thought. That night he sat in the dark with nothing to scroll, and for the first time in years he talked with his family until midnight. In the morning the lights came back, but he left his phone in the drawer a little longer. Sometimes losing the signal is how we find each other again." },
+    { t: "One More Lamppost", s: "A girl wanted to run a marathon, but on the first day she could only run to the end of her street. Her friends laughed. She ran to the end of the street again the next day, and the next. Every week she added one more lamppost. Nobody noticed the lampposts adding up. A year later she crossed the finish line of the city marathon, slow but smiling. Big goals are just small steps that refuse to stop." }
+  ];
+
+  var S = { clipUrl: "", clipBlob: null, audioBlob: null, resultUrl: "", recorder: null };
+  function say(m, err){ var s = $("studioStatus"); s.textContent = m; s.className = "status" + (err ? " err" : ""); }
+  var isUrdu = function(t){ return /[؀-ۿ]/.test(t); };
+
+  STORIES.forEach(function(st, i){ var o = document.createElement("option"); o.value = i; o.textContent = st.t; $("storyPick").appendChild(o); });
+  function setStory(i){ $("storyPick").value = i; $("storyText").value = STORIES[i].s; syncDir(); }
+  function syncDir(){ $("storyText").classList.toggle("ur", isUrdu($("storyText").value)); }
+  $("storyPick").addEventListener("change", function(){ setStory(+this.value); });
+  $("storyRandom").addEventListener("click", function(){ setStory(Math.floor(Math.random() * STORIES.length)); });
+  $("storyText").addEventListener("input", syncDir);
+  setStory(0);
+
+  $("elKey").value = store.get("rs_el_key");
+  $("elVoice").value = store.get("rs_el_voice") || $("elVoice").value;
+
+  // 1. Clip
+  window.ReelStudio = { useClip: function(it){
+    var best = it.files.slice().sort(function(a,b){ return Math.abs((a.w||0) - 720) - Math.abs((b.w||0) - 720); })[0];
+    if (!best) return;
+    S.clipUrl = best.url; S.clipBlob = null;
+    $("clipPrev").src = best.url; $("clipPrev").play().catch(function(){});
+    $("clipInfo").textContent = "Clip select ho gayi: " + (it.tags || it.id) + " (" + best.label + ")";
+    $("studio").scrollIntoView({ behavior: "smooth", block: "start" });
+    say("Ab story chunein aur awaaz banayein.");
+  }};
+  $("clipFile").addEventListener("change", function(){
+    var f = this.files[0]; if (!f) return;
+    S.clipBlob = f; S.clipUrl = "";
+    $("clipPrev").src = URL.createObjectURL(f); $("clipPrev").play().catch(function(){});
+    $("clipInfo").textContent = "Apni file: " + f.name;
+  });
+
+  // 3. Audio
+  function setAudio(blob, label){
+    S.audioBlob = blob;
+    $("audioPrev").src = URL.createObjectURL(blob); $("audioPrev").hidden = false;
+    say(label + " tayyar hai. Sun kar check karein, phir Story video banayein.");
+  }
+  $("audioFile").addEventListener("change", function(){ if (this.files[0]) setAudio(this.files[0], "Audio file"); });
+
+  $("ttsBtn").addEventListener("click", function(){
+    var key = $("elKey").value.trim(), voice = $("elVoice").value.trim(), text = $("storyText").value.trim();
+    if (!text){ say("Pehle story likhein.", true); return; }
+    if (!key){ $("ttsBtn").closest(".step").querySelector("details").open = true; say("AI awaaz ke liye ElevenLabs ki free API key dalein (settings khul gayi hain).", true); return; }
+    store.set("rs_el_key", key); store.set("rs_el_voice", voice);
+    var b = this; b.disabled = true; say("AI awaaz ban rahi hai…");
+    fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
+      method: "POST",
+      headers: { "xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg" },
+      body: JSON.stringify({ text: text, model_id: $("elModel").value })
+    }).then(function(r){
+      if (r.ok) return r.blob();
+      return r.text().then(function(t){
+        var m = r.status === 401 ? "API key ghalat hai" : r.status === 429 ? "Free limit poori ho gayi" : r.status === 404 ? "Voice ID nahi mili" : "ElevenLabs error " + r.status;
+        if (/quota/i.test(t)) m = "Is mahine ke free characters khatam ho gaye";
+        throw new Error(m);
+      });
+    }).then(function(blob){ setAudio(blob, "AI awaaz"); })
+      .catch(function(e){ say((e.message === "Failed to fetch" ? "ElevenLabs se rabta nahi ho saka" : e.message) + ". Mic se record karein ya audio file chunein.", true); })
+      .finally(function(){ b.disabled = false; });
+  });
+
+  $("recBtn").addEventListener("click", function(){
+    var b = this;
+    if (S.recorder && S.recorder.state === "recording"){ S.recorder.stop(); return; }
+    if (!navigator.mediaDevices || !window.MediaRecorder){ say("Is browser mein recording nahi chalti. Chrome use karein.", true); return; }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      var chunks = [], rec = new MediaRecorder(stream);
+      S.recorder = rec;
+      rec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+      rec.onstop = function(){
+        stream.getTracks().forEach(function(t){ t.stop(); });
+        b.textContent = "Mic se record"; b.classList.remove("rec");
+        setAudio(new Blob(chunks, { type: rec.mimeType || "audio/webm" }), "Aap ki recording");
+      };
+      rec.start();
+      b.textContent = "■ Stop"; b.classList.add("rec");
+      say("Recording chal rahi hai. Story parhein, phir Stop dabayein.");
+    }).catch(function(){ say("Mic ki ijazat nahi mili. Browser settings mein mic allow karein.", true); });
+  });
+
+  // 4. Render
+  function wrap(ctx, text, maxW){
+    var words = text.split(/\s+/), lines = [], line = "";
+    words.forEach(function(w){
+      var test = line ? line + " " + w : w;
+      if (ctx.measureText(test).width > maxW && line){ lines.push(line); line = w; } else line = test;
+    });
+    if (line) lines.push(line);
+    return lines;
+  }
+  function segments(text, dur){
+    var parts = text.split(/(?<=[.!?؟۔])\s+/).map(function(p){ return p.trim(); }).filter(Boolean);
+    var total = parts.reduce(function(a,p){ return a + p.length; }, 0) || 1, t = 0;
+    return parts.map(function(p){ var d = dur * p.length / total, seg = { a: t, b: t + d, text: p }; t += d; return seg; });
+  }
+  function loadClipBlob(){
+    if (S.clipBlob) return Promise.resolve(S.clipBlob);
+    if (!S.clipUrl) return Promise.reject(new Error("Pehle clip chunein"));
+    return fetch(S.clipUrl).then(function(r){ if (!r.ok) throw 0; return r.blob(); })
+      .catch(function(){ throw new Error("Yeh clip seedha load nahi ho saki. Card se Download karein, phir 'Apni video file' mein chunein"); });
+  }
+  function pickMime(){
+    var c = ["video/mp4;codecs=avc1.42E01E,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+    for (var i = 0; i < c.length; i++) if (MediaRecorder.isTypeSupported(c[i])) return c[i];
+    return "";
+  }
+
+  $("makeBtn").addEventListener("click", function(){
+    var btn = this, text = $("storyText").value.trim();
+    if (!S.audioBlob){ say("Pehle step 3 mein awaaz banayein ya record karein.", true); return; }
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){ say("Is browser mein video ban nahi sakti. Chrome use karein.", true); return; }
+    btn.disabled = true; $("result").hidden = true; say("Clip load ho rahi hai…");
+    var AC = window.AudioContext || window.webkitAudioContext, actx = new AC(), video, buf;
+    loadClipBlob().then(function(blob){
+      video = document.createElement("video");
+      video.muted = true; video.playsInline = true; video.loop = true; video.src = URL.createObjectURL(blob);
+      return new Promise(function(res, rej){ video.onloadedmetadata = res; video.onerror = function(){ rej(new Error("Video file khul nahi saki")); }; });
+    }).then(function(){
+      return S.audioBlob.arrayBuffer().then(function(ab){ return actx.decodeAudioData(ab); });
+    }).then(function(decoded){
+      buf = decoded;
+      return document.fonts && document.fonts.load ? document.fonts.load('700 40px "Noto Nastaliq Urdu"').catch(function(){}) : null;
+    }).then(function(){
+      var vw = video.videoWidth || 720, vh = video.videoHeight || 1280, k = Math.min(1, 1280 / Math.max(vw, vh));
+      var W = Math.round(vw * k / 2) * 2, H = Math.round(vh * k / 2) * 2;
+      var canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+      var ctx = canvas.getContext("2d");
+      var dest = actx.createMediaStreamDestination();
+      var src = actx.createBufferSource(); src.buffer = buf; src.connect(dest);
+      if ($("origOn").checked){
+        try { video.muted = false; var vs = actx.createMediaElementSource(video), g = actx.createGain(); g.gain.value = 0.15; vs.connect(g); g.connect(dest); } catch(e){ video.muted = true; }
+      }
+      var stream = canvas.captureStream(30);
+      dest.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
+      var mime = pickMime(), chunks = [], rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined);
+      rec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+      var segs = segments(text, buf.duration), ur = isUrdu(text), caps = $("capOn").checked && text;
+      var fs = Math.round(W * (ur ? 0.05 : 0.055)), lh = fs * (ur ? 2.0 : 1.35);
+      var t0 = 0, done = false;
+      function draw(){
+        if (done) return;
+        var s = Math.max(W / vw, H / vh);
+        ctx.drawImage(video, (W - vw * s) / 2, (H - vh * s) / 2, vw * s, vh * s);
+        if (caps){
+          var el = actx.currentTime - t0, seg = segs.find(function(x){ return el >= x.a && el < x.b; });
+          if (seg){
+            ctx.font = (ur ? '700 ' + fs + 'px "Noto Nastaliq Urdu", serif' : '600 ' + fs + 'px "Instrument Sans", sans-serif');
+            ctx.direction = ur ? "rtl" : "ltr"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            var lines = wrap(ctx, seg.text, W * 0.84).slice(0, 5), bh = lines.length * lh + fs, by = H * 0.78 - bh / 2;
+            ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(W * 0.05, by, W * 0.9, bh);
+            ctx.fillStyle = "#fff";
+            lines.forEach(function(l, i){ ctx.fillText(l, W / 2, by + fs / 2 + lh * (i + 0.5)); });
+          }
+        }
+        var pct = Math.min(100, Math.round((actx.currentTime - t0) / buf.duration * 100));
+        say("Video ban rahi hai… " + pct + "% (page khula rakhein)");
+        requestAnimationFrame(draw);
+      }
+      return actx.resume().then(function(){ return video.play(); }).then(function(){
+        return new Promise(function(res){
+          rec.onstop = function(){ res(new Blob(chunks, { type: (mime || "video/webm").split(";")[0] })); };
+          rec.start(500);
+          t0 = actx.currentTime; src.start();
+          draw();
+          src.onended = function(){ setTimeout(function(){ done = true; rec.stop(); video.pause(); }, 400); };
+        });
+      });
+    }).then(function(out){
+      if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
+      S.resultUrl = URL.createObjectURL(out); S.resultType = out.type;
+      $("resultVid").src = S.resultUrl; $("result").hidden = false;
+      say("Story video tayyar hai! Dekh kar Download karein.");
+    }).catch(function(e){ say(e.message || "Video nahi ban saki.", true); })
+      .finally(function(){ btn.disabled = false; actx.close().catch(function(){}); });
+  });
+
+  $("resultDl").addEventListener("click", function(){
+    if (!S.resultUrl) return;
+    var a = document.createElement("a");
+    a.href = S.resultUrl; a.download = "story-reel." + (/mp4/.test(S.resultType) ? "mp4" : "webm");
+    document.body.appendChild(a); a.click(); a.remove();
+  });
 })();
 </script>
 </body>

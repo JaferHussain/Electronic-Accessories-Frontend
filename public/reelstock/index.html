@@ -582,6 +582,129 @@ details[open] summary{margin-bottom:8px}
     return { title: pick.t, story: pick.s, scenes: pick.sc, fallback: true, matched: top > 0, why: why };
   }
 
+  // ---------- Built-in story generator (works without any AI service) ----------
+  // Each theme has interchangeable parts; every click combines a new opening, struggle, turn, ending, lesson, name and city.
+  var NAMES = ["علی","حمزہ","بلال","عثمان","ریحان","سعد","فیضان","زین","احمد","کامران","رحیم","دانیال","فہد","طلحہ"];
+  var CITIES = ["لاہور","ملتان","فیصل آباد","کراچی","پشاور","سیالکوٹ","گوجرانوالہ","حیدرآباد","راولپنڈی"];
+  var THEMES = {
+    mehnat: { k: ["mazdoor","mazdur","mehnat","mehnati","dukan","dukaan","karobar","business","kamyabi","kamiyabi","success","garib","gareeb","poor","rozi","paisa","labour","worker"],
+      t: ["{n} کی محنت","پسینے کی کمائی","چھوٹی شروعات"],
+      open: [["{p} کی ایک تنگ گلی میں {n} نام کا ایک غریب لڑکا رہتا تھا۔ اس کے پاس نہ ڈگری تھی نہ سفارش، بس دو مضبوط ہاتھ تھے۔","poor young man in a narrow old city alley at dawn"],
+             ["{n} روز سورج نکلنے سے پہلے مزدوری کے لیے {p} کے چوک پر کھڑا ہو جاتا۔ کبھی کام ملتا، کبھی خالی ہاتھ لوٹنا پڑتا۔","daily wage laborers waiting at a city square at sunrise"],
+             ["{n} کے ابا کی وفات کے بعد گھر کا سارا بوجھ اس کے کندھوں پر آ گیا۔ وہ صرف سترہ سال کا تھا۔","teenage boy standing at the door of a humble home, serious face"]],
+      prob: [["لوگ کہتے، تم جیسے لوگ ساری زندگی دوسروں کا کام ہی کرتے ہیں۔ یہ بات اس کے دل میں چبھ جاتی، مگر وہ خاموش رہتا۔","young worker carrying heavy sacks while people watch, dusty market"],
+             ["ایک دن ٹھیکیدار نے اس کی پورے ہفتے کی مزدوری روک لی۔ اس رات گھر میں کھانے کو کچھ نہیں تھا۔","empty kitchen at night lit by a single bulb, sad mood"],
+             ["اس نے ریڑھی لگائی تو پہلے ہی دن بارش نے سارا مال خراب کر دیا۔ جیب میں صرف چند سکے بچے۔","street cart in heavy rain, ruined goods, lonely vendor"]],
+      turn: [["اس نے فیصلہ کیا کہ روز کی کمائی میں سے کچھ ضرور بچائے گا، چاہے دس روپے ہی کیوں نہ ہوں۔ پرانا ڈبہ آہستہ آہستہ بھرنے لگا۔","hands dropping coins into an old tin box, warm lamp light"],
+             ["رات کو وہ ایک بوڑھے مستری کے پاس بیٹھ کر ہنر سیکھنے لگا۔ دن میں مزدوری، رات میں محنت۔","old craftsman teaching a young man in a small workshop at night"],
+             ["ایک گاہک نے اس کی ایمانداری دیکھ کر اسے اپنی دکان پر کام دے دیا۔ {n} نے وہاں کا ہر کام دل لگا کر سیکھا۔","young man working behind a shop counter, learning, warm light"]],
+      end: [["پانچ سال بعد {p} کے بازار میں ایک نئی دکان کھلی، جس پر بڑے حروف میں لکھا تھا، {n} اینڈ سنز۔","proud man standing in front of his own new shop, morning sun"],
+            ["آج {n} کا اپنا چھوٹا سا کاروبار ہے، اور وہ ہر سال دو نئے لڑکوں کو مفت ہنر سکھاتا ہے۔","man teaching two young apprentices in his own workshop, hopeful light"],
+            ["جن لوگوں نے کبھی اس پر ہنسا تھا، آج وہی اس سے مشورہ لینے آتے ہیں۔","successful humble businessman greeting people in his shop"]],
+      les: ["محنت کا پھل دیر سے سہی، مگر ملتا ضرور ہے۔","حالات نہیں، ارادے انسان کا مستقبل لکھتے ہیں۔","چھوٹی شروعات سے مت شرمائیں، ہر بڑا درخت ایک بیج سے شروع ہوتا ہے۔"] },
+    maa: { k: ["maa","maan","ammi","ami","amma","mother","walida","mamta"],
+      t: ["ماں","ماں کی دعا","{n} کی ماں"],
+      open: [["{n} کی ماں {p} کے ایک چھوٹے سے گھر میں سلائی کر کے اسے پڑھاتی تھی۔ مشین کی آواز رات دیر تک آتی رہتی۔","mother sewing on an old sewing machine late at night, warm lamp"],
+             ["جب {n} چھوٹا تھا تو ماں روز صبح اسے اسکول چھوڑنے جاتی، خود پرانی چپل میں اور اسے نئے جوتے پہنا کر۔","mother walking her small son to school on a dusty road at dawn"],
+             ["{n} کو نوکری کے لیے {p} جانا پڑا۔ جاتے وقت ماں نے اس کے بیگ میں دعائیں اور دو روٹیاں رکھ دیں۔","mother waving goodbye to her son at a bus stop, emotional"]],
+      prob: [["وقت گزرا، {n} مصروف ہوتا گیا۔ ماں کے فون اکثر بغیر جواب کے رہ جاتے۔","busy young man in an office ignoring a ringing phone"],
+             ["ایک دن {n} نے غصے میں ماں سے کہا، آپ کو کچھ سمجھ نہیں آتا۔ ماں خاموش ہو گئی اور بس مسکرا دی۔","young man turning away from his mother in a kitchen, tense moment"],
+             ["شہر کی زندگی میں {n} نے بہت کچھ پایا، مگر ہر رات ایک عجیب سا خالی پن رہتا۔","young man alone in a city apartment at night, looking out the window"]],
+      turn: [["پھر ایک رات خبر آئی کہ ماں بیمار ہے۔ {n} ساری رات سفر کر کے گھر پہنچا۔","night bus on a highway, worried young man looking through the window"],
+             ["ایک دن اسے ماں کی پرانی ڈائری ملی۔ ہر صفحے پر ایک ہی دعا لکھی تھی، میرا {n} خوش رہے۔","old diary with handwritten pages held in hands, soft light"],
+             ["عید پر وہ گھر آیا تو دیکھا ماں کے ہاتھ کانپ رہے تھے، مگر وہ پھر بھی اس کی پسند کا کھانا بنا رہی تھی۔","elderly mother cooking in a simple kitchen, trembling hands, warm light"]],
+      end: [["{n} نے ماں کا ہاتھ تھاما اور کہا، اب میں آپ کو کبھی اکیلا نہیں چھوڑوں گا۔","son holding his elderly mother's hands, tearful, golden light"],
+            ["اس دن کے بعد {n} ہر شام سب سے پہلے ماں کو فون کرتا ہے، چاہے کتنا ہی مصروف کیوں نہ ہو۔","young man smiling on a phone call at sunset"],
+            ["آج {n} کامیاب ہے، اور ہر نئے کام سے پہلے ماں سے دعا لے کر نکلتا ہے۔","mother blessing her grown son at the door, emotional morning light"]],
+      les: ["ماں کی دعا وہ سایہ ہے جو دھوپ میں بھی ساتھ چلتا ہے۔","جن کے پاس ماں ہے، وہ دنیا کے سب سے امیر لوگ ہیں۔","ماں کو وقت دیجیے، یہ دولت دوبارہ نہیں ملتی۔"] },
+    abba: { k: ["abba","abu","abbu","baap","father","walid","papa","dad"],
+      t: ["ابا","باپ کی خاموش قربانی","{n} کے ابا"],
+      open: [["{n} کے ابا {p} میں رکشہ چلاتے تھے۔ صبح سب سے پہلے جاتے اور رات سب سے آخر میں لوٹتے۔","father driving an auto rickshaw in a busy city at dawn"],
+             ["{n} کو نئی سائیکل چاہیے تھی۔ ابا نے کچھ نہیں کہا، بس سر ہلا دیا۔","boy looking at a bicycle in a shop window, father beside him"],
+             ["{n} کے ابا کم بولتے تھے۔ {n} کو لگتا تھا انہیں اس سے محبت ہی نہیں۔","quiet father reading a newspaper, son watching from a doorway"]],
+      prob: [["کچھ دن بعد سائیکل آ گئی، مگر {n} نے دیکھا کہ ابا کی پرانی گھڑی ان کی کلائی پر نہیں تھی۔","close up of a father's bare wrist, soft light"],
+             ["ایک رات {n} نے دیکھا کہ ابا کے جوتے پھٹے ہوئے تھے، اور ان میں گتا رکھا تھا۔","worn out torn shoes beside a doorway, cardboard inside"],
+             ["فیس کے آخری دن ابا دیر سے گھر آئے، تھکے ہوئے، مگر ہاتھ میں پوری فیس کے پیسے تھے۔","tired father handing money to his son at night, single bulb"]],
+      turn: [["{n} نے پوچھا، ابا، آپ نے اپنے لیے کچھ کیوں نہیں لیا؟ ابا مسکرائے، بیٹا، میری خوشی تم ہو۔","father smiling at his son, warm emotional moment"],
+             ["برسوں بعد جب {n} خود باپ بنا، تب اسے ابا کی ہر خاموشی کا مطلب سمجھ آیا۔","young father holding a baby, looking out a window thoughtfully"],
+             ["ماں نے بتایا کہ ابا نے برسوں سے اپنے لیے نیا کپڑا تک نہیں خریدا۔ {n} کی آنکھیں بھر آئیں۔","mother speaking softly to her son, son in tears, dim room"]],
+      end: [["پہلی تنخواہ ملی تو {n} سب سے پہلے ابا کے لیے نئی گھڑی اور جوتے لایا۔","son giving a wrapped gift box to his father, smiling"],
+            ["آج {n} ابا کو رکشے پر نہیں، اپنی گاڑی میں بٹھا کر {p} کی سیر کرواتا ہے۔","son driving a car with his proud father beside him, sunset"],
+            ["{n} نے ابا کو گلے لگا کر پہلی بار کہا، شکریہ ابا۔ ابا کچھ نہ بولے، بس آنکھیں نم ہو گئیں۔","son hugging his elderly father, emotional golden light"]],
+      les: ["باپ کی محبت شور نہیں کرتی، بس قربانی کرتی ہے۔","جس گھر میں باپ ہو، وہاں دھوپ اندر نہیں آتی۔","باپ کی قدر وقت پر کیجیے، بعد میں صرف یادیں رہ جاتی ہیں۔"] },
+    dost: { k: ["dost","dosti","friend","friends","friendship","yaar","yari","yaari"],
+      t: ["سچا دوست","دوستی","{n} اور {m}"],
+      open: [["{n} اور {m} بچپن سے {p} کی ایک ہی گلی میں کھیلتے بڑے ہوئے۔ ایک کے پاس کچھ ہوتا تو دونوں کا ہوتا۔","two little boys playing cricket in a narrow street, golden hour"],
+             ["کالج میں {n} کے بہت دوست تھے، جو ہر دعوت اور ہر ہنسی میں ساتھ ہوتے۔ {m} ان میں سب سے خاموش تھا۔","group of young college friends laughing at a cafe, one quiet friend"],
+             ["{n} امیر گھر کا لڑکا تھا اور {m} ایک غریب درزی کا بیٹا، مگر دونوں کی دوستی پورے محلے میں مثال تھی۔","two friends from different backgrounds walking together"]],
+      prob: [["پھر {n} کا کاروبار ڈوب گیا۔ اچانک فون خاموش ہو گئے اور دعوتیں بند ہو گئیں۔","young man sitting alone on stairs with his phone, defeated"],
+             ["ایک رات {n} کے ابا ہسپتال میں تھے اور خون کی ضرورت تھی۔ اس نے سب کو فون کیا، کسی نے نہ اٹھایا۔","worried young man in a hospital corridor at night"],
+             ["ایک غلط فہمی نے دونوں کے درمیان دیوار کھڑی کر دی، اور برسوں بات نہ ہوئی۔","two men standing back to back, gray mood"]],
+      turn: [["رات کے دو بجے دروازے پر دستک ہوئی۔ سامنے {m} کھڑا تھا، ہاتھ میں چائے کا تھرماس لیے۔","friend at a door at night holding a thermos, warm light"],
+             ["{m} نے بغیر کچھ کہے اپنی ساری جمع پونجی کا لفافہ {n} کی میز پر رکھ دیا۔","envelope placed on a table by a hand, close up, warm light"],
+             ["ایک دن {n} کو پتہ چلا کہ مشکل وقت میں جو گمنام مدد آتی رہی، وہ {m} ہی بھیجتا تھا۔","young man reading a letter, surprised and moved"]],
+      end: [["دونوں نے ایک دوسرے کو گلے لگایا۔ آج وہ مل کر ایک ہی کاروبار چلاتے ہیں۔","two friends hugging, office in background, hopeful light"],
+            ["{n} نے اس دن سیکھ لیا کہ ہزار جاننے والوں سے ایک سچا دوست بہتر ہے۔","two friends sitting on a rooftop watching the sunset"],
+            ["آج بھی ہر جمعہ کی شام دونوں اسی پرانی گلی کے ڈھابے پر چائے پیتے ہیں۔","two grown men drinking tea at a roadside dhaba at dusk"]],
+      les: ["دوست بہت ہوتے ہیں، سچا دوست مشکل میں پہچانا جاتا ہے۔","اچھے وقت میں دوست آپ کو جانتے ہیں، برے وقت میں آپ دوستوں کو۔","سچی دوستی خون کے رشتے سے کم نہیں۔"] },
+    talib: { k: ["talib","student","students","parhai","padhai","parhna","study","imtihan","exam","school","college","university","ustad","teacher","ilm","doctor","fail","degree"],
+      t: ["آخری صفحہ","ناکامی کے بعد","{n} کا خواب"],
+      open: [["{n} کا خواب ڈاکٹر بننا تھا۔ وہ {p} کے ایک سرکاری اسکول میں پڑھتا تھا جہاں بجلی اکثر غائب رہتی۔","student studying by candle light in a small room"],
+             ["{n} کلاس کا سب سے کمزور طالب علم سمجھا جاتا تھا۔ پچھلی سیٹ اس کی پہچان بن گئی تھی۔","shy boy sitting at the back of a classroom"],
+             ["{n} دن میں ہوٹل پر برتن دھوتا اور رات کو اسٹریٹ لائٹ کے نیچے بیٹھ کر پڑھتا۔","young boy reading a book under a street light at night"]],
+      prob: [["نتیجہ آیا تو وہ فیل تھا۔ رشتہ داروں نے کہا، پڑھائی تمہارے بس کی بات نہیں۔","boy holding a result sheet, disappointed"],
+             ["امتحان سے ایک ہفتہ پہلے اس کی ساری کتابیں بارش میں بھیگ گئیں۔","wet books drying in the sun on a rooftop"],
+             ["گھر کے حالات ایسے ہوئے کہ ابا نے کہا، اب پڑھائی چھوڑو اور کام کرو۔","father and son talking seriously in a modest home"]],
+      turn: [["ایک استاد نے اسے بلا کر کہا، ناکامی آخری صفحہ نہیں ہوتی، اگلا صفحہ پلٹو۔","kind teacher speaking to a student in an empty classroom"],
+             ["{n} نے ہر صبح فجر کے بعد دو گھنٹے پڑھنے کا عہد کیا، اور ایک دن بھی ناغہ نہیں کیا۔","student studying at dawn, early blue light through a window"],
+             ["محلے کی لائبریری کے بوڑھے بابا نے اسے رات کو وہاں بیٹھ کر پڑھنے کی اجازت دے دی۔","old librarian opening a library door for a student at night"]],
+      end: [["اگلے سال اخبار میں خبر چھپی، {p} کے {n} نے بورڈ میں پہلی پوزیشن حاصل کر لی۔","student holding a trophy with a proud family"],
+            ["آج {n} ڈاکٹر ہے، اور اسی سرکاری اسکول کے بچوں کو مفت پڑھاتا ہے۔","young doctor teaching children in a simple classroom"],
+            ["گریجویشن کے دن {n} نے اپنی ڈگری سب سے پہلے اپنے استاد کے ہاتھ میں رکھی۔","graduate in cap and gown handing a degree to an old teacher"]],
+      les: ["ناکامی کہانی کا اختتام نہیں، ایک نیا موڑ ہوتی ہے۔","علم وہ دولت ہے جو حالات نہیں چھین سکتے۔","ایک اچھا استاد پوری زندگی بدل سکتا ہے۔"] },
+    neki: { k: ["neki","nekiyan","madad","help","kindness","kind","imandar","imandari","honest","honesty","sach","sachai","khidmat","rehm","insaniyat","bhalai"],
+      t: ["نیکی","ایمانداری کا انعام","لوٹ کر آنے والی نیکی"],
+      open: [["{n} {p} کی ایک چھوٹی سی دکان پر کام کرتا تھا۔ تنخواہ کم تھی مگر دل بڑا تھا۔","young shop assistant in a small shop, kind face"],
+             ["ایک سرد رات {n} گھر جا رہا تھا کہ سڑک کنارے ایک بوڑھا آدمی ٹھٹھرتا ہوا دکھائی دیا۔","old man shivering on a roadside on a cold foggy night"],
+             ["{n} کو {p} کی ایک سڑک پر ایک بٹوہ ملا جس میں ہزاروں روپے اور ایک کارڈ تھا۔","wallet lying on a street, a hand picking it up, close up"]],
+      prob: [["اسی مہینے {n} کے اپنے گھر کا کرایہ باقی تھا۔ دل نے کہا، رکھ لو، کسی کو کیا پتہ چلے گا۔","young man deep in thought holding money, conflicted"],
+             ["اس کے پاس صرف ایک ہی گرم چادر تھی، وہ بھی پرانی۔","old shawl in hands on a cold night under a street light"],
+             ["ایک دن مالک نے غلطی سے اسے زیادہ پیسے دے دیے، اور {n} کو ان دنوں پیسوں کی سخت ضرورت تھی۔","extra money on a shop counter, young man looking at it"]],
+      turn: [["مگر {n} نے سب کچھ ویسا ہی واپس لوٹا دیا۔ سامنے والا حیران رہ گیا۔","young man returning a wallet to a surprised businessman"],
+             ["{n} نے بغیر سوچے اپنی چادر بوڑھے کے کندھوں پر ڈال دی اور خاموشی سے چل دیا۔","young man placing a shawl on an old man's shoulders at night"],
+             ["اس نے سوچا، جو اپنا نہیں وہ کبھی برکت نہیں دیتا، اور پیسے واپس کر دیے۔","young man handing money back across a counter"]],
+      end: [["کچھ ہفتوں بعد وہی شخص {n} کو ڈھونڈتا ہوا آیا اور اسے اپنی کمپنی میں اچھی نوکری دے دی۔","businessman shaking hands with a young man in an office"],
+            ["برسوں بعد ایک انٹرویو میں سامنے بیٹھا افسر وہی بوڑھا نکلا، جس نے اسے فوراً پہچان لیا۔","old man in a suit behind a desk smiling at a young man"],
+            ["مالک نے اس دن کہا، آج سے تم صرف ملازم نہیں، اس دکان کے حصے دار ہو۔","shop owner and young man shaking hands inside a shop, warm light"]],
+      les: ["نیکی کبھی ضائع نہیں جاتی، وقت پر لوٹ آتی ہے۔","ایمانداری مہنگی لگتی ہے، مگر سب سے بڑا منافع دیتی ہے۔","جو دوسروں کا سہارا بنتا ہے، اللہ اس کا سہارا بنتا ہے۔"] }
+  };
+
+  function pickTheme(prompt){
+    var words = prompt.toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean), best = [], top = 0;
+    Object.keys(THEMES).forEach(function(name){
+      var sc = THEMES[name].k.filter(function(k){ return words.some(function(w){ return w === k || (k.length >= 4 && w.indexOf(k) === 0); }); }).length;
+      if (sc > top){ top = sc; best = [name]; } else if (sc === top) best.push(name);
+    });
+    return { name: best[Math.floor(Math.random() * best.length)], matched: top > 0 };
+  }
+
+  function generateStory(prompt, why){
+    var th = pickTheme(prompt), T = THEMES[th.name], r = function(a){ return Math.floor(Math.random() * a.length); };
+    var recent = []; try { recent = JSON.parse(localStorage.getItem("rs_recent") || "[]"); } catch(e){}
+    var pick, key, n, m, p;
+    for (var tries = 0; tries < 30; tries++){
+      pick = [r(T.open), r(T.prob), r(T.turn), r(T.end), r(T.les), r(T.t)];
+      key = th.name + pick.slice(0, 4).join("");
+      if (recent.indexOf(key) < 0) break;
+    }
+    n = NAMES[r(NAMES)]; do { m = NAMES[r(NAMES)]; } while (m === n); p = CITIES[r(CITIES)];
+    recent.unshift(key); try { localStorage.setItem("rs_recent", JSON.stringify(recent.slice(0, 40))); } catch(e){}
+    var fill = function(s){ return s.replace(/\{n\}/g, n).replace(/\{m\}/g, m).replace(/\{p\}/g, p); };
+    var parts = [T.open[pick[0]], T.prob[pick[1]], T.turn[pick[2]], T.end[pick[3]]];
+    return { title: fill(T.t[pick[5]]), story: fill(parts.map(function(x){ return x[0]; }).join(" ") + " " + T.les[pick[4]]),
+      scenes: parts.map(function(x){ return x[1] + ", South Asian setting"; }), fallback: true, matched: th.matched, why: why };
+  }
+
   function parseStory(raw){
     raw = String(raw || "");
     var j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
@@ -603,7 +726,7 @@ details[open] summary{margin-bottom:8px}
         .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.text(); }).then(parseStory);
     };
     return viaPost().catch(function(e){ why = "POST " + e.message; return viaGet(); })
-      .catch(function(e){ why += ", GET " + (e.message === "Failed to fetch" ? "no connection" : e.message); return fromLibrary(prompt, why); });
+      .catch(function(e){ why += ", GET " + (e.message === "Failed to fetch" ? "no connection" : e.message); return generateStory(prompt, why); });
   }
 
   // AI pictures for each scene; a generated backdrop stands in when one can't load.
@@ -748,10 +871,10 @@ details[open] summary{margin-bottom:8px}
     step("story", "run"); aSay("Story likhi ja rahi hai…");
     writeStory(prompt).then(function(j){
       story = j; step("story", "ok");
-      if (j.fallback) aSay((j.matched ? "AI story service ne jawab nahi diya, is liye prompt se milti julti library story li hai" : "AI story service ne jawab nahi diya aur library mein is topic ki story nahi, is liye koi bhi story li hai") + " (" + j.why + ").");
+      if (j.fallback && !j.matched) aSay("Is topic ka andaza nahi laga, is liye ek motivational kahani bana raha hoon. Behtar nateeje ke liye prompt mein maa, abba, dost, mehnat, talib-e-ilm ya neki jaisa lafz likhein.");
       step("clip", "run"); step("voice", "run");
       return Promise.all([
-        sceneImages(j.scenes.slice(0, 4), function(i){ aSay((j.fallback ? "[Library story] " : "") + "“" + (j.title || "Story") + "” — tasveer " + (i + 1) + " / " + Math.min(4, j.scenes.length) + " ban rahi hai…"); }),
+        sceneImages(j.scenes.slice(0, 4), function(i){ aSay("“" + (j.title || "Story") + "” — tasveer " + (i + 1) + " / " + Math.min(4, j.scenes.length) + " ban rahi hai…"); }),
         voiceOver(j.story)
       ]);
     }).then(function(r){

@@ -408,24 +408,13 @@ details[open] summary{margin-bottom:8px}
   $("audioFile").addEventListener("change", function(){ if (this.files[0]) setAudio(this.files[0], "Audio file"); });
 
   $("ttsBtn").addEventListener("click", function(){
-    var key = $("elKey").value.trim(), voice = $("elVoice").value.trim(), text = $("storyText").value.trim();
+    var text = $("storyText").value.trim(), b = this;
     if (!text){ say("Pehle story likhein.", true); return; }
-    if (!key){ $("ttsBtn").closest(".step").querySelector("details").open = true; say("AI awaaz ke liye ElevenLabs ki free API key dalein (settings khul gayi hain).", true); return; }
-    store.set("rs_el_key", key); store.set("rs_el_voice", voice);
-    var b = this; b.disabled = true; say("AI awaaz ban rahi hai…");
-    fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", {
-      method: "POST",
-      headers: { "xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg" },
-      body: JSON.stringify({ text: text, model_id: $("elModel").value })
-    }).then(function(r){
-      if (r.ok) return r.blob();
-      return r.text().then(function(t){
-        var m = r.status === 401 ? "API key ghalat hai" : r.status === 429 ? "Free limit poori ho gayi" : r.status === 404 ? "Voice ID nahi mili" : "ElevenLabs error " + r.status;
-        if (/quota/i.test(t)) m = "Is mahine ke free characters khatam ho gaye";
-        throw new Error(m);
-      });
-    }).then(function(blob){ setAudio(blob, "AI awaaz"); })
-      .catch(function(e){ say((e.message === "Failed to fetch" ? "ElevenLabs se rabta nahi ho saka" : e.message) + ". Mic se record karein ya audio file chunein.", true); })
+    b.disabled = true; say("AI awaaz ban rahi hai… (free service hai, 20-60 second lag sakte hain)");
+    voiceOver(text).then(function(blob){
+      if (blob) setAudio(blob, "AI awaaz");
+      else say("Free awaaz service ne abhi jawab nahi diya. 20 second baad dobara dabayein, ya Mic se record karein.", true);
+    }).catch(function(){ say("AI awaaz nahi ban saki. Dobara try karein ya Mic se record karein.", true); })
       .finally(function(){ b.disabled = false; });
   });
 

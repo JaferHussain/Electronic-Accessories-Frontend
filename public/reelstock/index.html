@@ -61,6 +61,14 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .more{align-self:center}
 .note{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
 .actions .ghost{background:transparent}
+.auto h2{font:800 1.6rem/1.1 var(--display);margin:0;letter-spacing:-.01em}
+.auto textarea{flex:1 1 260px}
+.prog{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px;font-size:.95rem;color:var(--muted)}
+.prog li[data-s="run"]{color:var(--ink);font-weight:600}
+.prog li[data-s="run"]::after{content:" …"}
+.prog li[data-s="ok"]{color:var(--accent)}
+.prog li[data-s="ok"]::after{content:" ✓"}
+.prog li[data-s="err"]{color:var(--warn)}
 .studio h2{font:800 1.6rem/1.1 var(--display);margin:0;letter-spacing:-.01em}
 .steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
 .step{border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
@@ -87,14 +95,45 @@ details[open] summary{margin-bottom:8px}
     <p>Pexels aur Pixabay se royalty-free videos dhoondein, preview karein aur download karein. Commercial use allowed, attribution zaroori nahi.</p>
   </header>
 
+  <section class="panel auto" aria-labelledby="auto-h">
+    <h2 id="auto-h">Ek prompt, poori video</h2>
+    <form class="row" id="autoForm">
+      <textarea id="autoPrompt" aria-label="Prompt" style="min-height:90px">Ek mazdoor ki kahani jo mehnat se apni dukaan khol leta hai, Urdu mein, 45 second</textarea>
+      <button class="primary" type="submit" id="autoBtn">Video banao</button>
+    </form>
+    <ol class="prog" id="autoSteps" hidden>
+      <li data-k="story">Story likh raha hai</li>
+      <li data-k="clip">Matching video dhoond raha hai</li>
+      <li data-k="voice">Awaaz bana raha hai</li>
+      <li data-k="render">Video jor raha hai</li>
+    </ol>
+    <div class="status" id="autoStatus" role="status">Upar keys ek dafa save karein, phir sirf prompt likh kar Video banao dabayein.</div>
+  </section>
+
   <section class="panel" aria-labelledby="keys-h">
     <div class="label" id="keys-h">API keys (ek dafa dalni hain, isi browser mein save rehti hain)</div>
     <div class="row">
       <input type="password" id="pexelsKey" placeholder="Pexels API key" autocomplete="off">
       <input type="password" id="pixabayKey" placeholder="Pixabay API key" autocomplete="off">
+    </div>
+    <div class="row">
+      <select id="llmProv" aria-label="Story AI">
+        <option value="gemini">Story AI: Google Gemini (free)</option>
+        <option value="claude">Story AI: Claude</option>
+      </select>
+      <input type="password" id="llmKey" placeholder="Gemini / Claude API key" autocomplete="off">
+      <input type="text" id="llmModel" placeholder="Model" value="gemini-2.5-flash">
+    </div>
+    <div class="row">
+      <input type="password" id="elKey" placeholder="ElevenLabs API key (awaaz)" autocomplete="off">
+      <input type="text" id="elVoice" placeholder="Voice ID" value="JBFqnCBsd6RMkjVDRZzb">
+      <select id="elModel" aria-label="Voice model">
+        <option value="eleven_v3">Voice: v3 (Urdu behtar)</option>
+        <option value="eleven_multilingual_v2">Voice: Multilingual v2</option>
+      </select>
       <button id="saveKeys">Save keys</button>
     </div>
-    <p class="hint">Free keys: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> · <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (account bana kar key copy karein). Ek key bhi kaafi hai.</p>
+    <p class="hint">Free keys: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> · <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (video ke liye ek kaafi hai) · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini key</a> (story) · <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ElevenLabs key</a> (awaaz). Sab free hain.</p>
   </section>
 
   <section class="panel" aria-labelledby="search-h">
@@ -149,18 +188,6 @@ details[open] summary{margin-bottom:8px}
           <button type="button" class="primary" id="ttsBtn">AI awaaz banayein</button>
           <button type="button" id="recBtn">Mic se record</button>
         </div>
-        <details>
-          <summary>AI awaaz settings (ElevenLabs)</summary>
-          <div class="row">
-            <input type="password" id="elKey" placeholder="ElevenLabs API key" autocomplete="off">
-            <input type="text" id="elVoice" placeholder="Voice ID" value="JBFqnCBsd6RMkjVDRZzb">
-            <select id="elModel" aria-label="Voice model">
-              <option value="eleven_multilingual_v2">Multilingual v2</option>
-              <option value="eleven_v3">v3 (Urdu behtar)</option>
-            </select>
-          </div>
-          <p class="hint">Free key: <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">elevenlabs.io</a> (har mahine kuch hazar characters free).</p>
-        </details>
         <label class="hint" for="audioFile">Ya apni audio file</label>
         <input type="file" id="audioFile" accept="audio/*">
         <audio id="audioPrev" controls hidden></audio>
@@ -452,19 +479,15 @@ details[open] summary{margin-bottom:8px}
     return "";
   }
 
-  $("makeBtn").addEventListener("click", function(){
-    var btn = this, text = $("storyText").value.trim();
-    if (!S.audioBlob){ say("Pehle step 3 mein awaaz banayein ya record karein.", true); return; }
-    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){ say("Is browser mein video ban nahi sakti. Chrome use karein.", true); return; }
-    btn.disabled = true; $("result").hidden = true; say("Clip load ho rahi hai…");
-    var AC = window.AudioContext || window.webkitAudioContext, actx = new AC(), video, buf;
-    loadClipBlob().then(function(blob){
-      video = document.createElement("video");
-      video.muted = true; video.playsInline = true; video.loop = true; video.src = URL.createObjectURL(blob);
-      return new Promise(function(res, rej){ video.onloadedmetadata = res; video.onerror = function(){ rej(new Error("Video file khul nahi saki")); }; });
-    }).then(function(){
-      return S.audioBlob.arrayBuffer().then(function(ab){ return actx.decodeAudioData(ab); });
-    }).then(function(decoded){
+  // Shared renderer: loops the clip under the voice-over, burns in captions, returns the recorded video Blob.
+  function renderStory(o){
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return Promise.reject(new Error("Is browser mein video ban nahi sakti. Chrome use karein"));
+    var AC = window.AudioContext || window.webkitAudioContext, actx = new AC(), video, buf, text = o.text || "";
+    video = document.createElement("video");
+    video.muted = true; video.playsInline = true; video.loop = true; video.src = URL.createObjectURL(o.clipBlob);
+    return new Promise(function(res, rej){ video.onloadedmetadata = res; video.onerror = function(){ rej(new Error("Video file khul nahi saki")); }; })
+    .then(function(){ return o.audioBlob.arrayBuffer().then(function(ab){ return actx.decodeAudioData(ab); }); })
+    .then(function(decoded){
       buf = decoded;
       return document.fonts && document.fonts.load ? document.fonts.load('700 40px "Noto Nastaliq Urdu"').catch(function(){}) : null;
     }).then(function(){
@@ -474,14 +497,14 @@ details[open] summary{margin-bottom:8px}
       var ctx = canvas.getContext("2d");
       var dest = actx.createMediaStreamDestination();
       var src = actx.createBufferSource(); src.buffer = buf; src.connect(dest);
-      if ($("origOn").checked){
+      if (o.orig){
         try { video.muted = false; var vs = actx.createMediaElementSource(video), g = actx.createGain(); g.gain.value = 0.15; vs.connect(g); g.connect(dest); } catch(e){ video.muted = true; }
       }
       var stream = canvas.captureStream(30);
       dest.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
       var mime = pickMime(), chunks = [], rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined);
       rec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
-      var segs = segments(text, buf.duration), ur = isUrdu(text), caps = $("capOn").checked && text;
+      var segs = segments(text, buf.duration), ur = isUrdu(text), caps = o.captions && text;
       var fs = Math.round(W * (ur ? 0.05 : 0.055)), lh = fs * (ur ? 2.0 : 1.35);
       var t0 = 0, done = false;
       function draw(){
@@ -499,8 +522,7 @@ details[open] summary{margin-bottom:8px}
             lines.forEach(function(l, i){ ctx.fillText(l, W / 2, by + fs / 2 + lh * (i + 0.5)); });
           }
         }
-        var pct = Math.min(100, Math.round((actx.currentTime - t0) / buf.duration * 100));
-        say("Video ban rahi hai… " + pct + "% (page khula rakhein)");
+        if (o.onProgress) o.onProgress(Math.min(100, Math.round((actx.currentTime - t0) / buf.duration * 100)));
         requestAnimationFrame(draw);
       }
       return actx.resume().then(function(){ return video.play(); }).then(function(){
@@ -512,13 +534,150 @@ details[open] summary{margin-bottom:8px}
           src.onended = function(){ setTimeout(function(){ done = true; rec.stop(); video.pause(); }, 400); };
         });
       });
+    }).finally(function(){ actx.close().catch(function(){}); });
+  }
+  function showResult(out){
+    if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
+    S.resultUrl = URL.createObjectURL(out); S.resultType = out.type;
+    $("resultVid").src = S.resultUrl; $("result").hidden = false;
+  }
+
+  $("makeBtn").addEventListener("click", function(){
+    var btn = this;
+    if (!S.audioBlob){ say("Pehle step 3 mein awaaz banayein ya record karein.", true); return; }
+    btn.disabled = true; $("result").hidden = true; say("Clip load ho rahi hai…");
+    loadClipBlob().then(function(clip){
+      return renderStory({ clipBlob: clip, audioBlob: S.audioBlob, text: $("storyText").value.trim(), captions: $("capOn").checked, orig: $("origOn").checked,
+        onProgress: function(p){ say("Video ban rahi hai… " + p + "% (page khula rakhein)"); } });
+    }).then(function(out){ showResult(out); say("Story video tayyar hai! Dekh kar Download karein."); })
+      .catch(function(e){ say(e.message || "Video nahi ban saki.", true); })
+      .finally(function(){ btn.disabled = false; });
+  });
+
+
+  // ---------- One-prompt mode ----------
+  $("llmProv").value = store.get("rs_llm_prov") || "gemini";
+  $("llmKey").value = store.get("rs_llm_key");
+  $("llmModel").value = store.get("rs_llm_model") || ($("llmProv").value === "claude" ? "claude-haiku-5-5" : "gemini-2.5-flash");
+  if (store.get("rs_el_model")) $("elModel").value = store.get("rs_el_model");
+  $("llmProv").addEventListener("change", function(){
+    $("llmModel").value = this.value === "claude" ? "claude-haiku-5-5" : "gemini-2.5-flash";
+  });
+  $("saveKeys").addEventListener("click", function(){
+    store.set("rs_llm_prov", $("llmProv").value); store.set("rs_llm_key", $("llmKey").value.trim());
+    store.set("rs_llm_model", $("llmModel").value.trim());
+    store.set("rs_el_key", $("elKey").value.trim()); store.set("rs_el_voice", $("elVoice").value.trim());
+    store.set("rs_el_model", $("elModel").value);
+  });
+
+  function step(k, st){ var li = document.querySelector('#autoSteps li[data-k="' + k + '"]'); if (li) li.dataset.s = st; }
+  function aSay(m, err){ var s = $("autoStatus"); s.textContent = m; s.className = "status" + (err ? " err" : ""); }
+  function fail(k, msg){ var e = new Error(msg); e.step = k; return e; }
+
+  var STORY_RULES = "You write narration for short vertical social videos (Facebook Reels). Based on the request below, write an ORIGINAL short story. Never retell, quote or adapt any copyrighted book, film, show or song. " +
+    "Language: follow the request. If the request is in Roman Urdu or Urdu and no language is named, write in Urdu script. " +
+    "Length: about 2.3 words per second of the requested duration; if none is given, 80 to 110 words. Open with a gripping first line, keep sentences short, end with a one-line lesson. " +
+    "Reply with JSON only, no markdown: {\"title\": string, \"story\": string, \"video_query\": string (2 to 4 English words for a stock footage search matching the story's setting and mood; no names)}.\n\nRequest: ";
+
+  function writeStory(prompt){
+    var prov = $("llmProv").value, key = $("llmKey").value.trim(), model = $("llmModel").value.trim();
+    if (!key) return Promise.reject(fail("story", "Story AI ki API key nahi hai. Upar Gemini ki free key dal kar Save karein"));
+    var req = prov === "claude"
+      ? fetch("https://api.anthropic.com/v1/messages", { method: "POST",
+          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true", "content-type": "application/json" },
+          body: JSON.stringify({ model: model, max_tokens: 1200, messages: [{ role: "user", content: STORY_RULES + prompt }] }) })
+      : fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), { method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ contents: [{ parts: [{ text: STORY_RULES + prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.9 } }) });
+    return req.then(function(r){
+      if (!r.ok) throw fail("story", r.status === 400 || r.status === 401 || r.status === 403 ? "Story AI ki key ya model ghalat hai" : r.status === 429 ? "Story AI ki free limit abhi poori hai, thori der baad try karein" : "Story AI error " + r.status);
+      return r.json();
+    }).then(function(d){
+      var raw = prov === "claude" ? (d.content && d.content[0] && d.content[0].text) : (d.candidates && d.candidates[0] && d.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join(""));
+      raw = String(raw || "");
+      var j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+      if (!j.story) throw 0;
+      return j;
+    }).catch(function(e){ throw e && e.step ? e : fail("story", e && e.message === "Failed to fetch" ? "Story AI se rabta nahi ho saka" : "Story AI ka jawab samajh nahi aaya, dobara try karein"); });
+  }
+
+  function clipCandidates(q){
+    var pk = store.get("rs_pexels"), xk = store.get("rs_pixabay"), jobs = [];
+    var near = function(files){ return files.sort(function(a,b){ return Math.abs(a.w - 720) - Math.abs(b.w - 720); })[0]; };
+    if (pk) jobs.push(fetch("https://api.pexels.com/videos/search?per_page=10&orientation=portrait&query=" + encodeURIComponent(q), { headers: { Authorization: pk } })
+      .then(function(r){ return r.ok ? r.json() : { videos: [] }; }).then(function(d){
+        return (d.videos || []).map(function(v){
+          var f = near((v.video_files || []).filter(function(x){ return x.link && x.file_type === "video/mp4"; }).map(function(x){ return { url: x.link, w: x.width || 0 }; }));
+          return f && f.url;
+        }).filter(Boolean);
+      }).catch(function(){ return []; }));
+    if (xk) jobs.push(fetch("https://pixabay.com/api/videos/?safesearch=true&per_page=20&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q))
+      .then(function(r){ return r.ok ? r.json() : { hits: [] }; }).then(function(d){
+        return (d.hits || []).filter(function(h){ var l = h.videos && h.videos.large; return l && l.height > l.width; })
+          .map(function(h){ var m = h.videos.medium && h.videos.medium.url ? h.videos.medium : h.videos.small; return m && m.url; }).filter(Boolean);
+      }).catch(function(){ return []; }));
+    return Promise.all(jobs).then(function(lists){ return [].concat.apply([], lists); });
+  }
+
+  function findClip(query){
+    if (!store.get("rs_pexels") && !store.get("rs_pixabay")) return Promise.reject(fail("clip", "Pexels ya Pixabay ki key nahi hai. Upar dal kar Save karein"));
+    var tries = [query, query.split(/\s+/).slice(0, 2).join(" "), "cinematic nature"];
+    function attempt(i){
+      if (i >= tries.length) return Promise.reject(fail("clip", "Koi chalne wali clip nahi mili. Prompt thora badal kar try karein"));
+      return clipCandidates(tries[i]).then(function(urls){
+        urls = urls.slice(0, 6).sort(function(){ return Math.random() - 0.5; });
+        function next(j){
+          if (j >= urls.length) return attempt(i + 1);
+          return fetch(urls[j]).then(function(r){ if (!r.ok) throw 0; return r.blob(); }).catch(function(){ return next(j + 1); });
+        }
+        return next(0);
+      });
+    }
+    return attempt(0);
+  }
+
+  function voiceOver(text){
+    var key = store.get("rs_el_key") || $("elKey").value.trim(), voice = store.get("rs_el_voice") || $("elVoice").value.trim();
+    if (!key) return Promise.reject(fail("voice", "ElevenLabs ki key nahi hai. Upar dal kar Save karein"));
+    return fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", { method: "POST",
+      headers: { "xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg" },
+      body: JSON.stringify({ text: text, model_id: $("elModel").value }) })
+    .then(function(r){
+      if (r.ok) return r.blob();
+      throw fail("voice", r.status === 401 ? "ElevenLabs key ghalat hai" : r.status === 429 ? "ElevenLabs ki free limit poori hai" : r.status === 404 ? "Voice ID nahi mili" : "ElevenLabs error " + r.status);
+    }).catch(function(e){ throw e && e.step ? e : fail("voice", "ElevenLabs se rabta nahi ho saka"); });
+  }
+
+  $("autoForm").addEventListener("submit", function(e){
+    e.preventDefault();
+    var prompt = $("autoPrompt").value.trim(), btn = $("autoBtn");
+    if (!prompt) return;
+    $("autoSteps").hidden = false;
+    document.querySelectorAll("#autoSteps li").forEach(function(li){ delete li.dataset.s; });
+    btn.disabled = true; $("result").hidden = true;
+    var story, clip, audio;
+    step("story", "run"); aSay("Story likhi ja rahi hai…");
+    writeStory(prompt).then(function(j){
+      story = j; step("story", "ok"); step("clip", "run");
+      aSay("“" + (j.title || "Story") + "” tayyar. Ab \"" + j.video_query + "\" ki video dhoond raha hoon…");
+      return Promise.all([findClip(j.video_query || "cinematic"), voiceOver(j.story)]);
+    }).then(function(r){
+      clip = r[0]; audio = r[1];
+      step("clip", "ok"); step("voice", "ok"); step("render", "run");
+      $("storyText").value = story.story; syncDir();
+      S.audioBlob = audio; $("audioPrev").src = URL.createObjectURL(audio); $("audioPrev").hidden = false;
+      S.clipBlob = clip; $("clipPrev").src = URL.createObjectURL(clip); $("clipInfo").textContent = "Auto clip: " + story.video_query;
+      return renderStory({ clipBlob: clip, audioBlob: audio, text: story.story, captions: true, orig: false,
+        onProgress: function(p){ aSay("Video jor raha hoon… " + p + "% (page khula rakhein, screen band na karein)"); } });
     }).then(function(out){
-      if (S.resultUrl) URL.revokeObjectURL(S.resultUrl);
-      S.resultUrl = URL.createObjectURL(out); S.resultType = out.type;
-      $("resultVid").src = S.resultUrl; $("result").hidden = false;
-      say("Story video tayyar hai! Dekh kar Download karein.");
-    }).catch(function(e){ say(e.message || "Video nahi ban saki.", true); })
-      .finally(function(){ btn.disabled = false; actx.close().catch(function(){}); });
+      step("render", "ok"); showResult(out);
+      aSay("Video tayyar hai! Neeche dekh kar Download karein. Pasand na aaye to dobara Video banao dabayein, har dafa nayi story aur clip aayegi.");
+      $("result").scrollIntoView({ behavior: "smooth", block: "center" });
+    }).catch(function(err){
+      var k = (err && err.step) || "render";
+      if (k === "clip" || k === "voice"){ step("clip", k === "clip" ? "err" : "ok"); step("voice", k === "voice" ? "err" : "ok"); } else step(k, "err");
+      aSay((err && err.message) || "Video nahi ban saki.", true);
+    }).finally(function(){ btn.disabled = false; });
   });
 
   $("resultDl").addEventListener("click", function(){

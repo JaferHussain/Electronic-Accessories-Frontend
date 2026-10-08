@@ -103,11 +103,11 @@ details[open] summary{margin-bottom:8px}
     </form>
     <ol class="prog" id="autoSteps" hidden>
       <li data-k="story">Story likh raha hai</li>
-      <li data-k="clip">Matching video dhoond raha hai</li>
+      <li data-k="clip">Story ki AI tasveerein bana raha hai</li>
       <li data-k="voice">Awaaz bana raha hai</li>
       <li data-k="render">Video jor raha hai</li>
     </ol>
-    <div class="status" id="autoStatus" role="status">Upar keys ek dafa save karein, phir sirf prompt likh kar Video banao dabayein.</div>
+    <div class="status" id="autoStatus" role="status">Sirf prompt likhein aur Video banao dabayein. Koi key nahi chahiye.</div>
   </section>
 
   <section class="panel" aria-labelledby="keys-h">
@@ -115,14 +115,6 @@ details[open] summary{margin-bottom:8px}
     <div class="row">
       <input type="password" id="pexelsKey" placeholder="Pexels API key" autocomplete="off">
       <input type="password" id="pixabayKey" placeholder="Pixabay API key" autocomplete="off">
-    </div>
-    <div class="row">
-      <select id="llmProv" aria-label="Story AI">
-        <option value="gemini">Story AI: Google Gemini (free)</option>
-        <option value="claude">Story AI: Claude</option>
-      </select>
-      <input type="password" id="llmKey" placeholder="Gemini / Claude API key" autocomplete="off">
-      <input type="text" id="llmModel" placeholder="Model" value="gemini-2.5-flash">
     </div>
     <div class="row">
       <input type="password" id="elKey" placeholder="ElevenLabs API key (awaaz)" autocomplete="off">
@@ -133,7 +125,7 @@ details[open] summary{margin-bottom:8px}
       </select>
       <button id="saveKeys">Save keys</button>
     </div>
-    <p class="hint">Free keys: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> · <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (video ke liye ek kaafi hai) · <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Gemini key</a> (story) · <a href="https://elevenlabs.io/app/settings/api-keys" target="_blank" rel="noopener">ElevenLabs key</a> (awaaz). Sab free hain.</p>
+    <p class="hint">Free keys: <a href="https://www.pexels.com/api/" target="_blank" rel="noopener">pexels.com/api</a> · <a href="https://pixabay.com/api/docs/" target="_blank" rel="noopener">pixabay.com/api/docs</a> (video ke liye ek kaafi hai). ElevenLabs key optional hai, sirf behtar awaaz ke liye. "Ek prompt" wale option ko kisi key ki zaroorat nahi.</p>
   </section>
 
   <section class="panel" aria-labelledby="search-h">
@@ -384,6 +376,10 @@ details[open] summary{margin-bottom:8px}
   setStory(0);
 
   $("elKey").value = store.get("rs_el_key");
+  if (store.get("rs_el_model")) $("elModel").value = store.get("rs_el_model");
+  $("saveKeys").addEventListener("click", function(){
+    store.set("rs_el_key", $("elKey").value.trim()); store.set("rs_el_voice", $("elVoice").value.trim()); store.set("rs_el_model", $("elModel").value);
+  });
   $("elVoice").value = store.get("rs_el_voice") || $("elVoice").value;
 
   // 1. Clip
@@ -555,97 +551,166 @@ details[open] summary{margin-bottom:8px}
   });
 
 
-  // ---------- One-prompt mode ----------
-  $("llmProv").value = store.get("rs_llm_prov") || "gemini";
-  $("llmKey").value = store.get("rs_llm_key");
-  $("llmModel").value = store.get("rs_llm_model") || ($("llmProv").value === "claude" ? "claude-haiku-5-5" : "gemini-2.5-flash");
-  if (store.get("rs_el_model")) $("elModel").value = store.get("rs_el_model");
-  $("llmProv").addEventListener("change", function(){
-    $("llmModel").value = this.value === "claude" ? "claude-haiku-5-5" : "gemini-2.5-flash";
-  });
-  $("saveKeys").addEventListener("click", function(){
-    store.set("rs_llm_prov", $("llmProv").value); store.set("rs_llm_key", $("llmKey").value.trim());
-    store.set("rs_llm_model", $("llmModel").value.trim());
-    store.set("rs_el_key", $("elKey").value.trim()); store.set("rs_el_voice", $("elVoice").value.trim());
-    store.set("rs_el_model", $("elModel").value);
-  });
-
+  // ---------- One-prompt mode (no keys needed) ----------
   function step(k, st){ var li = document.querySelector('#autoSteps li[data-k="' + k + '"]'); if (li) li.dataset.s = st; }
   function aSay(m, err){ var s = $("autoStatus"); s.textContent = m; s.className = "status" + (err ? " err" : ""); }
-  function fail(k, msg){ var e = new Error(msg); e.step = k; return e; }
+  var POLL = "https://text.pollinations.ai/";
 
-  var STORY_RULES = "You write narration for short vertical social videos (Facebook Reels). Based on the request below, write an ORIGINAL short story. Never retell, quote or adapt any copyrighted book, film, show or song. " +
-    "Language: follow the request. If the request is in Roman Urdu or Urdu and no language is named, write in Urdu script. " +
-    "Length: about 2.3 words per second of the requested duration; if none is given, 80 to 110 words. Open with a gripping first line, keep sentences short, end with a one-line lesson. " +
-    "Reply with JSON only, no markdown: {\"title\": string, \"story\": string, \"video_query\": string (2 to 4 English words for a stock footage search matching the story's setting and mood; no names)}.\n\nRequest: ";
+  var STORY_RULES = "You write narration for a short vertical Facebook Reel. Write an ORIGINAL short story for the request below. Never retell, quote or adapt any copyrighted book, film, show or song. " +
+    "Language: follow the request; if it is in Roman Urdu or Urdu and no language is named, write in Urdu script. " +
+    "Length: about 2.3 words per second of the requested duration, otherwise 80 to 110 words. Strong first line, short sentences, one-line lesson at the end. " +
+    "Reply with JSON only: {\"title\": string, \"story\": string, \"scenes\": [4 short English image prompts, one per part of the story, cinematic, no text, no logos, no real people or famous characters]}. Request: ";
+
+  function fromLibrary(prompt){
+    var p = prompt.toLowerCase(), best = 0, score = -1;
+    STORIES.forEach(function(st, i){
+      var sc = 0; st.s.toLowerCase().split(/\s+/).forEach(function(w){ if (w.length > 3 && p.indexOf(w) >= 0) sc++; });
+      if (sc > score || (sc === score && Math.random() < .5)){ score = sc; best = i; }
+    });
+    var st = STORIES[best];
+    return { title: st.t, story: st.s, scenes: ["warm cinematic street at golden hour", "close up of hands working, soft light", "quiet room with window light, emotional", "sunrise over city, hopeful"], fallback: true };
+  }
 
   function writeStory(prompt){
-    var prov = $("llmProv").value, key = $("llmKey").value.trim(), model = $("llmModel").value.trim();
-    if (!key) return Promise.reject(fail("story", "Story AI ki API key nahi hai. Upar Gemini ki free key dal kar Save karein"));
-    var req = prov === "claude"
-      ? fetch("https://api.anthropic.com/v1/messages", { method: "POST",
-          headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true", "content-type": "application/json" },
-          body: JSON.stringify({ model: model, max_tokens: 1200, messages: [{ role: "user", content: STORY_RULES + prompt }] }) })
-      : fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent?key=" + encodeURIComponent(key), { method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ contents: [{ parts: [{ text: STORY_RULES + prompt }] }], generationConfig: { responseMimeType: "application/json", temperature: 0.9 } }) });
-    return req.then(function(r){
-      if (!r.ok) throw fail("story", r.status === 400 || r.status === 401 || r.status === 403 ? "Story AI ki key ya model ghalat hai" : r.status === 429 ? "Story AI ki free limit abhi poori hai, thori der baad try karein" : "Story AI error " + r.status);
-      return r.json();
-    }).then(function(d){
-      var raw = prov === "claude" ? (d.content && d.content[0] && d.content[0].text) : (d.candidates && d.candidates[0] && d.candidates[0].content.parts.map(function(p){ return p.text || ""; }).join(""));
-      raw = String(raw || "");
+    var url = POLL + encodeURIComponent(STORY_RULES + prompt) + "?json=true&seed=" + Math.floor(Math.random() * 1e6);
+    return fetch(url).then(function(r){ if (!r.ok) throw 0; return r.text(); }).then(function(raw){
       var j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-      if (!j.story) throw 0;
+      if (!j.story || j.story.length < 40) throw 0;
+      if (!Array.isArray(j.scenes) || !j.scenes.length) j.scenes = fromLibrary("").scenes;
       return j;
-    }).catch(function(e){ throw e && e.step ? e : fail("story", e && e.message === "Failed to fetch" ? "Story AI se rabta nahi ho saka" : "Story AI ka jawab samajh nahi aaya, dobara try karein"); });
+    }).catch(function(){ return fromLibrary(prompt); });
   }
 
-  function clipCandidates(q){
-    var pk = store.get("rs_pexels"), xk = store.get("rs_pixabay"), jobs = [];
-    var near = function(files){ return files.sort(function(a,b){ return Math.abs(a.w - 720) - Math.abs(b.w - 720); })[0]; };
-    if (pk) jobs.push(fetch("https://api.pexels.com/videos/search?per_page=10&orientation=portrait&query=" + encodeURIComponent(q), { headers: { Authorization: pk } })
-      .then(function(r){ return r.ok ? r.json() : { videos: [] }; }).then(function(d){
-        return (d.videos || []).map(function(v){
-          var f = near((v.video_files || []).filter(function(x){ return x.link && x.file_type === "video/mp4"; }).map(function(x){ return { url: x.link, w: x.width || 0 }; }));
-          return f && f.url;
-        }).filter(Boolean);
-      }).catch(function(){ return []; }));
-    if (xk) jobs.push(fetch("https://pixabay.com/api/videos/?safesearch=true&per_page=20&key=" + encodeURIComponent(xk) + "&q=" + encodeURIComponent(q))
-      .then(function(r){ return r.ok ? r.json() : { hits: [] }; }).then(function(d){
-        return (d.hits || []).filter(function(h){ var l = h.videos && h.videos.large; return l && l.height > l.width; })
-          .map(function(h){ var m = h.videos.medium && h.videos.medium.url ? h.videos.medium : h.videos.small; return m && m.url; }).filter(Boolean);
-      }).catch(function(){ return []; }));
-    return Promise.all(jobs).then(function(lists){ return [].concat.apply([], lists); });
-  }
-
-  function findClip(query){
-    if (!store.get("rs_pexels") && !store.get("rs_pixabay")) return Promise.reject(fail("clip", "Pexels ya Pixabay ki key nahi hai. Upar dal kar Save karein"));
-    var tries = [query, query.split(/\s+/).slice(0, 2).join(" "), "cinematic nature"];
-    function attempt(i){
-      if (i >= tries.length) return Promise.reject(fail("clip", "Koi chalne wali clip nahi mili. Prompt thora badal kar try karein"));
-      return clipCandidates(tries[i]).then(function(urls){
-        urls = urls.slice(0, 6).sort(function(){ return Math.random() - 0.5; });
-        function next(j){
-          if (j >= urls.length) return attempt(i + 1);
-          return fetch(urls[j]).then(function(r){ if (!r.ok) throw 0; return r.blob(); }).catch(function(){ return next(j + 1); });
-        }
-        return next(0);
-      });
+  // AI pictures for each scene; a generated backdrop stands in when one can't load.
+  function sceneImages(scenes, onEach){
+    var out = [], seed = Math.floor(Math.random() * 1e6);
+    function one(i){
+      if (i >= scenes.length) return Promise.resolve(out);
+      onEach(i);
+      var u = "https://image.pollinations.ai/prompt/" + encodeURIComponent(scenes[i] + ", cinematic, vertical composition, soft light, highly detailed") +
+        "?width=720&height=1280&nologo=true&seed=" + (seed + i);
+      var timer = new Promise(function(_, rej){ setTimeout(rej, 45000); });
+      return Promise.race([fetch(u).then(function(r){ if (!r.ok) throw 0; return r.blob(); }).then(function(b){ return createImageBitmap(b); }), timer])
+        .then(function(bmp){ out.push({ bmp: bmp }); }, function(){ out.push({ hue: (seed * 7 + i * 67) % 360 }); })
+        .then(function(){ return one(i + 1); });
     }
-    return attempt(0);
+    return one(0);
   }
 
   function voiceOver(text){
-    var key = store.get("rs_el_key") || $("elKey").value.trim(), voice = store.get("rs_el_voice") || $("elVoice").value.trim();
-    if (!key) return Promise.reject(fail("voice", "ElevenLabs ki key nahi hai. Upar dal kar Save karein"));
-    return fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(voice) + "?output_format=mp3_44100_128", { method: "POST",
-      headers: { "xi-api-key": key, "Content-Type": "application/json", "Accept": "audio/mpeg" },
-      body: JSON.stringify({ text: text, model_id: $("elModel").value }) })
-    .then(function(r){
-      if (r.ok) return r.blob();
-      throw fail("voice", r.status === 401 ? "ElevenLabs key ghalat hai" : r.status === 429 ? "ElevenLabs ki free limit poori hai" : r.status === 404 ? "Voice ID nahi mili" : "ElevenLabs error " + r.status);
-    }).catch(function(e){ throw e && e.step ? e : fail("voice", "ElevenLabs se rabta nahi ho saka"); });
+    var el = store.get("rs_el_key");
+    if (el) return fetch("https://api.elevenlabs.io/v1/text-to-speech/" + encodeURIComponent(store.get("rs_el_voice") || "JBFqnCBsd6RMkjVDRZzb") + "?output_format=mp3_44100_128", { method: "POST",
+      headers: { "xi-api-key": el, "Content-Type": "application/json", "Accept": "audio/mpeg" },
+      body: JSON.stringify({ text: text, model_id: store.get("rs_el_model") || "eleven_v3" }) })
+      .then(function(r){ if (!r.ok) throw 0; return r.blob(); }).catch(function(){ return freeVoice(text); });
+    return freeVoice(text);
+  }
+  function freeVoice(text){
+    var u = POLL + encodeURIComponent("Read the following text aloud exactly as written, word for word, with warm storytelling emotion. Do not add anything: " + text) + "?model=openai-audio&voice=onyx";
+    return fetch(u).then(function(r){
+      if (!r.ok || !/audio/.test(r.headers.get("content-type") || "")) throw 0;
+      return r.blob();
+    }).then(function(b){ return b.size > 5000 ? b : null; }).catch(function(){ return null; });
+  }
+
+  // Soft original background music made in the browser (no copyright).
+  function music(actx, dest, dur, level){
+    var master = actx.createGain(); master.gain.value = level;
+    var lp = actx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 1400;
+    master.connect(lp); lp.connect(dest);
+    var chords = [[220, 261.6, 329.6], [174.6, 220, 261.6], [261.6, 329.6, 392], [196, 246.9, 293.7]];
+    var t0 = actx.currentTime + 0.05, len = 4;
+    for (var c = 0; c * len < dur + len; c++){
+      var ch = chords[c % 4], st = t0 + c * len;
+      ch.forEach(function(f){
+        [1, 0.5].forEach(function(mul){
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = "triangle"; o.frequency.value = f * mul;
+          g.gain.setValueAtTime(0, st); g.gain.linearRampToValueAtTime(0.09, st + 1.2); g.gain.linearRampToValueAtTime(0, st + len + 0.6);
+          o.connect(g); g.connect(master); o.start(st); o.stop(st + len + 0.7);
+        });
+      });
+      for (var n = 0; n < 8; n++){
+        var o2 = actx.createOscillator(), g2 = actx.createGain(), nt = st + n * (len / 8);
+        o2.type = "sine"; o2.frequency.value = ch[n % 3] * 2;
+        g2.gain.setValueAtTime(0, nt); g2.gain.linearRampToValueAtTime(0.05, nt + 0.03); g2.gain.exponentialRampToValueAtTime(0.0001, nt + 0.45);
+        o2.connect(g2); g2.connect(master); o2.start(nt); o2.stop(nt + 0.5);
+      }
+    }
+    return master;
+  }
+
+  function renderScenes(o){
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) return Promise.reject(new Error("Is browser mein video ban nahi sakti. Chrome use karein"));
+    var AC = window.AudioContext || window.webkitAudioContext, actx = new AC(), buf = null, text = o.text;
+    var W = 720, H = 1280, ur = isUrdu(text);
+    return (o.audioBlob ? o.audioBlob.arrayBuffer().then(function(ab){ return actx.decodeAudioData(ab); }).catch(function(){ return null; }) : Promise.resolve(null))
+    .then(function(b){
+      buf = b;
+      return document.fonts && document.fonts.load ? document.fonts.load('700 40px "Noto Nastaliq Urdu"').catch(function(){}) : null;
+    }).then(function(){
+      var words = text.split(/\s+/).length;
+      var dur = buf ? buf.duration + 0.6 : Math.max(15, words / (ur ? 2.0 : 2.4));
+      var canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+      var ctx = canvas.getContext("2d"), dest = actx.createMediaStreamDestination();
+      music(actx, dest, dur, buf ? 0.25 : 0.6);
+      var src = null;
+      if (buf){ src = actx.createBufferSource(); src.buffer = buf; src.connect(dest); }
+      var stream = canvas.captureStream(30);
+      dest.stream.getAudioTracks().forEach(function(t){ stream.addTrack(t); });
+      var mime = pickMime(), chunks = [], rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 4000000 } : undefined);
+      rec.ondataavailable = function(e){ if (e.data.size) chunks.push(e.data); };
+      var segs = segments(text, buf ? buf.duration : dur), scenes = o.scenes, per = dur / scenes.length;
+      var fs = Math.round(W * (ur ? 0.05 : 0.055)), lh = fs * (ur ? 2.0 : 1.35), t0 = 0, done = false;
+      function paint(sc, p, alpha){
+        ctx.globalAlpha = alpha;
+        if (sc.bmp){
+          var z = 1.04 + 0.1 * p, iw = sc.bmp.width, ih = sc.bmp.height, s = Math.max(W / iw, H / ih) * z;
+          ctx.drawImage(sc.bmp, (W - iw * s) / 2 + (p - .5) * 30, (H - ih * s) / 2, iw * s, ih * s);
+        } else {
+          var g = ctx.createLinearGradient(0, 0, W, H);
+          g.addColorStop(0, "hsl(" + sc.hue + ",45%," + (18 + 6 * p) + "%)"); g.addColorStop(1, "hsl(" + ((sc.hue + 50) % 360) + ",50%,8%)");
+          ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+          for (var i = 0; i < 14; i++){
+            var x = (i * 173 % W) + Math.sin(p * 3 + i) * 40, y = (i * 311 % H) - p * 120 + i * 9;
+            ctx.fillStyle = "hsla(" + ((sc.hue + i * 9) % 360) + ",70%,70%,.08)"; ctx.beginPath(); ctx.arc(x, (y + H) % H, 40 + (i % 5) * 18, 0, 7); ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
+      function draw(){
+        if (done) return;
+        var el = actx.currentTime - t0, k = Math.min(scenes.length - 1, Math.floor(el / per)), p = (el - k * per) / per;
+        paint(scenes[k], p, 1);
+        if (k + 1 < scenes.length && p > 0.88) paint(scenes[k + 1], 0, (p - 0.88) / 0.12);
+        if (el < 3 && o.title){
+          ctx.font = (ur ? '700 ' + Math.round(fs * 1.3) + 'px "Noto Nastaliq Urdu", serif' : '800 ' + Math.round(fs * 1.3) + 'px "Bricolage Grotesque", sans-serif');
+          ctx.direction = ur ? "rtl" : "ltr"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          ctx.fillStyle = "rgba(0,0,0,.45)"; ctx.fillRect(0, H * 0.12, W, fs * 3.2);
+          ctx.fillStyle = "#fff"; ctx.fillText(o.title, W / 2, H * 0.12 + fs * 1.6);
+        }
+        var cut = buf ? el : el * (buf ? 1 : 1), seg = segs.find(function(x){ return cut >= x.a && cut < x.b; });
+        if (seg){
+          ctx.font = (ur ? '700 ' + fs + 'px "Noto Nastaliq Urdu", serif' : '600 ' + fs + 'px "Instrument Sans", sans-serif');
+          ctx.direction = ur ? "rtl" : "ltr"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+          var lines = wrap(ctx, seg.text, W * 0.84).slice(0, 5), bh = lines.length * lh + fs, by = (buf ? H * 0.78 : H * 0.6) - bh / 2;
+          ctx.fillStyle = "rgba(0,0,0,.55)"; ctx.fillRect(W * 0.05, by, W * 0.9, bh);
+          ctx.fillStyle = "#fff";
+          lines.forEach(function(l, i){ ctx.fillText(l, W / 2, by + fs / 2 + lh * (i + 0.5)); });
+        }
+        if (o.onProgress) o.onProgress(Math.min(100, Math.round(el / dur * 100)));
+        if (el >= dur){ done = true; rec.stop(); return; }
+        requestAnimationFrame(draw);
+      }
+      return actx.resume().then(function(){
+        return new Promise(function(res){
+          rec.onstop = function(){ res(new Blob(chunks, { type: (mime || "video/webm").split(";")[0] })); };
+          rec.start(500);
+          t0 = actx.currentTime; if (src) src.start();
+          draw();
+        });
+      });
+    }).finally(function(){ actx.close().catch(function(){}); });
   }
 
   $("autoForm").addEventListener("submit", function(e){
@@ -655,28 +720,31 @@ details[open] summary{margin-bottom:8px}
     $("autoSteps").hidden = false;
     document.querySelectorAll("#autoSteps li").forEach(function(li){ delete li.dataset.s; });
     btn.disabled = true; $("result").hidden = true;
-    var story, clip, audio;
+    var story, imgs, audio;
     step("story", "run"); aSay("Story likhi ja rahi hai…");
     writeStory(prompt).then(function(j){
-      story = j; step("story", "ok"); step("clip", "run");
-      aSay("“" + (j.title || "Story") + "” tayyar. Ab \"" + j.video_query + "\" ki video dhoond raha hoon…");
-      return Promise.all([findClip(j.video_query || "cinematic"), voiceOver(j.story)]);
+      story = j; step("story", "ok");
+      if (j.fallback) aSay("AI story service abhi busy hai, is liye library ki story li hai.");
+      step("clip", "run"); step("voice", "run");
+      return Promise.all([
+        sceneImages(j.scenes.slice(0, 4), function(i){ aSay("“" + (j.title || "Story") + "” — tasveer " + (i + 1) + " / " + Math.min(4, j.scenes.length) + " ban rahi hai…"); }),
+        voiceOver(j.story)
+      ]);
     }).then(function(r){
-      clip = r[0]; audio = r[1];
-      step("clip", "ok"); step("voice", "ok"); step("render", "run");
+      imgs = r[0]; audio = r[1];
+      step("clip", imgs.some(function(x){ return x.bmp; }) ? "ok" : "err"); step("voice", audio ? "ok" : "err");
+      step("render", "run");
       $("storyText").value = story.story; syncDir();
-      S.audioBlob = audio; $("audioPrev").src = URL.createObjectURL(audio); $("audioPrev").hidden = false;
-      S.clipBlob = clip; $("clipPrev").src = URL.createObjectURL(clip); $("clipInfo").textContent = "Auto clip: " + story.video_query;
-      return renderStory({ clipBlob: clip, audioBlob: audio, text: story.story, captions: true, orig: false,
-        onProgress: function(p){ aSay("Video jor raha hoon… " + p + "% (page khula rakhein, screen band na karein)"); } });
+      var note = audio ? "" : " (awaaz service abhi dastiyab nahi, is liye music aur subtitles wali video ban rahi hai)";
+      return renderScenes({ scenes: imgs, audioBlob: audio, text: story.story, title: story.title,
+        onProgress: function(p){ aSay("Video jor raha hoon… " + p + "%" + note + ". Page khula rakhein."); } });
     }).then(function(out){
       step("render", "ok"); showResult(out);
-      aSay("Video tayyar hai! Neeche dekh kar Download karein. Pasand na aaye to dobara Video banao dabayein, har dafa nayi story aur clip aayegi.");
+      aSay("Video tayyar hai! Neeche dekh kar Download karein. Dobara dabane par nayi story aur nayi tasveerein aayengi.");
       $("result").scrollIntoView({ behavior: "smooth", block: "center" });
     }).catch(function(err){
-      var k = (err && err.step) || "render";
-      if (k === "clip" || k === "voice"){ step("clip", k === "clip" ? "err" : "ok"); step("voice", k === "voice" ? "err" : "ok"); } else step(k, "err");
-      aSay((err && err.message) || "Video nahi ban saki.", true);
+      step("render", "err");
+      aSay((err && err.message) || "Video nahi ban saki. Dobara try karein.", true);
     }).finally(function(){ btn.disabled = false; });
   });
 

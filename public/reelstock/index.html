@@ -63,6 +63,10 @@ button.primary{background:var(--accent);color:var(--accent-ink);border-color:var
 .actions .ghost{background:transparent}
 .auto h2{font:800 1.6rem/1.1 var(--display);margin:0;letter-spacing:-.01em}
 .auto textarea{flex:1 1 260px}
+.adv{border-top:1px solid var(--line);padding-top:14px}
+.adv>summary{font-weight:600;color:var(--muted)}
+.advbody{display:flex;flex-direction:column;gap:22px;margin-top:14px}
+.auto .result{margin-top:4px}
 .prog{margin:0;padding-inline-start:20px;display:flex;flex-direction:column;gap:4px;font-size:.95rem;color:var(--muted)}
 .prog li[data-s="run"]{color:var(--ink);font-weight:600}
 .prog li[data-s="run"]::after{content:" …"}
@@ -92,24 +96,25 @@ details[open] summary{margin-bottom:8px}
 <div class="wrap">
   <header>
     <h1>Reel<span>Stock</span></h1>
-    <p>Pexels aur Pixabay se royalty-free videos dhoondein, preview karein aur download karein. Commercial use allowed, attribution zaroori nahi.</p>
+    <p>Ek line likhein, ek button dabayein. Story, tasveerein, music aur subtitles ke saath Reel tayyar.</p>
   </header>
 
   <section class="panel auto" aria-labelledby="auto-h">
     <h2 id="auto-h">Ek prompt, poori video</h2>
     <form class="row" id="autoForm">
       <textarea id="autoPrompt" aria-label="Prompt" style="min-height:90px">Ek mazdoor ki kahani jo mehnat se apni dukaan khol leta hai, Urdu mein, 45 second</textarea>
-      <button class="primary" type="submit" id="autoBtn">Video banao</button>
+      <button class="primary" type="submit" id="autoBtn" style="font-size:1.1rem;padding:14px 26px">Video banao</button>
     </form>
-    <ol class="prog" id="autoSteps" hidden>
-      <li data-k="story">Story likh raha hai</li>
-      <li data-k="clip">Story ki AI tasveerein bana raha hai</li>
-      <li data-k="voice">Awaaz bana raha hai</li>
-      <li data-k="render">Video jor raha hai</li>
-    </ol>
     <div class="status" id="autoStatus" role="status">Sirf prompt likhein aur Video banao dabayein. Koi key nahi chahiye.</div>
+    <div class="result" id="result" hidden>
+      <video id="resultVid" controls playsinline></video>
+      <button type="button" class="primary" id="resultDl">Download story video</button>
+    </div>
   </section>
 
+  <details class="adv">
+    <summary>Advanced: stock videos aur manual studio</summary>
+    <div class="advbody">
   <section class="panel" aria-labelledby="keys-h">
     <div class="label" id="keys-h">API keys (ek dafa dalni hain, isi browser mein save rehti hain)</div>
     <div class="row">
@@ -194,11 +199,10 @@ details[open] summary{margin-bottom:8px}
       </div>
     </div>
     <div class="status" id="studioStatus" role="status"></div>
-    <div class="result" id="result" hidden>
-      <video id="resultVid" controls playsinline></video>
-      <button type="button" class="primary" id="resultDl">Download story video</button>
-    </div>
   </section>
+
+    </div>
+  </details>
 
   <p class="note">License: Pexels aur Pixabay ki videos free hain aur Reels/ads mein use ho sakti hain, lekin clip ko bina badle bechna ya us mein dikhaye logon/brands ko apne product ka endorsement batana mana hai. Facebook original content ko zyada reach deta hai, is liye stock clip ke saath apni voice-over, text ya apni footage zaroor milayein.</p>
 </div>
@@ -706,7 +710,6 @@ details[open] summary{margin-bottom:8px}
     e.preventDefault();
     var prompt = $("autoPrompt").value.trim(), btn = $("autoBtn");
     if (!prompt) return;
-    $("autoSteps").hidden = false;
     document.querySelectorAll("#autoSteps li").forEach(function(li){ delete li.dataset.s; });
     btn.disabled = true; $("result").hidden = true;
     var story, imgs, audio;

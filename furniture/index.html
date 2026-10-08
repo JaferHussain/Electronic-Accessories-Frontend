@@ -78,6 +78,10 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .cam-ctl{position:absolute;left:16px;right:16px;bottom:calc(112px + env(safe-area-inset-bottom,0px));display:grid;gap:8px;background:rgba(0,0,0,.5);border-radius:14px;padding:10px 12px}
 .cam-row{display:grid;grid-template-columns:96px minmax(0,1fr) 56px;align-items:center;gap:10px;color:#fff;font-size:13px}
 .cam-row input{width:100%;accent-color:#fff}
+.cam-seg{display:flex;gap:4px;min-width:0}
+.cam-seg button{flex:1 1 0;min-width:0;border:0;border-radius:8px;padding:6px 4px;background:rgba(255,255,255,.14);color:#fff;font-size:12px;font-weight:600}
+.cam-seg button.on{background:#fff;color:#111}
+#aiView{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .cam-row b{font:500 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
 </style>
 
@@ -127,9 +131,13 @@ svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stro
     <video id="camVideo" playsinline muted autoplay></video>
     <model-viewer id="mv2" touch-action="none" disable-zoom disable-pan environment-image="neutral" exposure="1.1" shadow-intensity="1" shadow-softness=".6" interaction-prompt="none"
       min-camera-orbit="-Infinity 0deg 0.05m" max-camera-orbit="Infinity 180deg 60m" min-field-of-view="10deg" max-field-of-view="120deg" interpolation-decay="1000" alt="Product placed in camera view"></model-viewer>
-    <div class="cam-top"><span id="camTip">Drag to turn · move the slider to push it back toward the wall</span></div>
+    <canvas id="aiView" aria-hidden="true"></canvas>
+    <div class="cam-top"><span id="camTip">Starting camera…</span></div>
     <div class="cam-ctl">
-      <label class="cam-row"><span>Distance</span><input type="range" id="camDist" min="1" max="8" step="0.1" value="3"><b id="camDistV">3.0 m</b></label>
+      <div class="cam-row"><span>Placement</span>
+        <div class="cam-seg" id="camMode"><button data-m="auto" class="on">AI auto</button><button data-m="lock">Lock</button><button data-m="manual">Manual</button></div>
+        <b id="camAiV">–</b></div>
+      <label class="cam-row" id="distRow" hidden><span>Distance</span><input type="range" id="camDist" min="1" max="8" step="0.1" value="3"><b id="camDistV">3.0 m</b></label>
       <label class="cam-row"><span>Phone height</span><input type="range" id="camH" min="0.6" max="2" step="0.05" value="1.3"><b id="camHV">1.30 m</b></label>
     </div>
     <div class="cam-bar">
@@ -228,7 +236,7 @@ mv.addEventListener('load',()=>{
   $('#arMsg').textContent=can
     ?'AR is ready. Tap the button, point your camera at the floor, and the piece appears at its real size so you can check how it fits.'
     :canCamera()
-      ?'Full AR is not supported on this phone, so the button opens Camera view: the product floats over your camera and you size it by hand.'
+      ?'Full AR is not supported on this phone, so the button opens Camera view. An on-device AI model finds your floor and walls and places the piece the way it belongs.'
       :arBlocker();
 });
 
@@ -239,29 +247,33 @@ function canCamera(){
   return mobile&&!framed&&window.isSecureContext&&!!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia);
 }
 const mv2=$('#mv2'),camVideo=$('#camVideo');let camStream=null;
-/* Virtual camera that copies the real one: same field of view, same height, turned by the phone's gyroscope.
-   The piece stands on the floor at the origin; the phone sits `dist` meters in front of it at `height` meters. */
-const V={dist:3,height:1.3,yaw0:null,yaw:0,pitch:-12,turn:0,fov:60,on:false};
+/* Virtual camera that copies the real one (same field of view and height, turned by the gyroscope).
+   The piece stands on the floor at the world origin; the phone stands at (px, height, pz). */
+const V={height:1.3,dist:3,px:0,pz:3,psi:0,fixed:false,yaw0:null,yaw:0,pitch:-12,turn:0,fov:60,vf:65*Math.PI/180,hf:40*Math.PI/180,on:false,mode:'auto'};
 const D2R=Math.PI/180;
+const setTip=t=>{$('#camTip').textContent=t};
 function updateFov(){
   const vw=camVideo.videoWidth||1080,vh=camVideo.videoHeight||1920,W=innerWidth,H=innerHeight;
   const LONG=65*D2R; // typical main-camera field of view across the long side of the sensor
   const vAsp=vw/vh;
   let vf,hf;
   if(vAsp<1){vf=LONG;hf=2*Math.atan(Math.tan(LONG/2)*vAsp)}else{hf=LONG;vf=2*Math.atan(Math.tan(LONG/2)/vAsp)}
+  V.vf=vf;V.hf=hf;
   const sAsp=W/H;
   const visV=sAsp<vAsp?vf:2*Math.atan(Math.tan(hf/2)/sAsp); // object-fit: cover crops one side
   V.fov=visV/D2R;
 }
+const curTheta=()=>-(V.yaw-(V.yaw0??V.yaw))*D2R;
 function applyCam(){
   if(!V.on)return;
-  const th=-(V.yaw-(V.yaw0??V.yaw))*D2R, ph=(90+V.pitch)*D2R, r=V.dist;
-  const P=[0,V.height,V.dist];
+  const th=curTheta(), ph=(90+V.pitch)*D2R, r=3;
+  const P=[V.px,V.height,V.pz];
   const tx=P[0]-r*Math.sin(ph)*Math.sin(th),ty=P[1]-r*Math.cos(ph),tz=P[2]-r*Math.sin(ph)*Math.cos(th);
   mv2.fieldOfView=V.fov.toFixed(2)+'deg';
   mv2.cameraTarget=`${tx.toFixed(4)}m ${ty.toFixed(4)}m ${tz.toFixed(4)}m`;
-  mv2.cameraOrbit=`${th.toFixed(4)}rad ${ph.toFixed(4)}rad ${r.toFixed(3)}m`;
-  mv2.orientation=`0deg 0deg ${V.turn}deg`;
+  mv2.cameraOrbit=`${th.toFixed(4)}rad ${ph.toFixed(4)}rad ${r}m`;
+  mv2.orientation=`0deg 0deg ${(V.psi/D2R+V.turn).toFixed(2)}deg`;
+  mv2.style.visibility=(V.mode==='auto'&&!V.fixed)?'hidden':'visible';
   mv2.jumpCameraToGoal();
 }
 function onOrient(e){
@@ -276,6 +288,106 @@ function onOrient(e){
   V.yaw+=dy*.35;V.pitch+=(pitch-V.pitch)*.35;
   applyCam();
 }
+
+/* ---------- On-device AI: SegFormer-B0 (ADE20K, open source) finds floor and walls ---------- */
+const AI={model:null,proc:null,RawImage:null,loading:null,busy:false,failed:false,timer:0};
+const grab=document.createElement('canvas'),gctx=grab.getContext('2d',{willReadFrequently:true});
+let placer=null;
+function loadAI(){
+  if(AI.loading)return AI.loading;
+  AI.loading=(async()=>{
+    placer=await import(new URL('placer.js',location.href).href);
+    const T=await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+    T.env.allowLocalModels=false;
+    const id='Xenova/segformer-b0-finetuned-ade-512-512';
+    const progress=p=>{if(p.status==='progress'&&/\.onnx$/.test(p.file||''))setTip(`Downloading AI model… ${Math.round(p.progress||0)}%`)};
+    setTip('Downloading AI model…');
+    AI.proc=await T.AutoProcessor.from_pretrained(id);
+    const M=T.SegformerForSemanticSegmentation||T.AutoModelForSemanticSegmentation;
+    AI.model=await M.from_pretrained(id,{dtype:'q8',device:'wasm',progress_callback:progress});
+    AI.RawImage=T.RawImage;
+  })();
+  return AI.loading;
+}
+const MSG={
+  'no-floor':'Point the phone at the floor so the AI can see it',
+  'tilt-down':'Tilt the phone down a little so the AI can see where the floor meets the wall',
+  'no-wall':'No wall found. Aim at a wall, or step back so it is in view',
+};
+async function runAI(){
+  AI.timer=0;
+  if(!V.on||V.mode!=='auto'||AI.busy||!AI.model)return;
+  if(camVideo.readyState<2){AI.timer=setTimeout(runAI,300);return}
+  AI.busy=true;
+  try{
+    const vw=camVideo.videoWidth,vh=camVideo.videoHeight,k=320/Math.max(vw,vh),w=Math.round(vw*k),h=Math.round(vh*k);
+    grab.width=w;grab.height=h;gctx.drawImage(camVideo,0,0,w,h);
+    const pose={pitch:V.pitch*D2R,th:curTheta(),height:V.height};
+    const img=new AI.RawImage(gctx.getImageData(0,0,w,h).data,w,h,4).rgb();
+    const out=await AI.model(await AI.proc(img));
+    const lg=out.logits,[,C,gh,gw]=lg.dims,d=lg.data,N=gw*gh,labels=new Uint8Array(N);
+    for(let i=0;i<N;i++){let best=-1e9,bi=0;for(let c=0;c<C;c++){const v=d[c*N+i];if(v>best){best=v;bi=c}}labels[i]=bi}
+    if(V.mode!=='auto'||!V.on)return;
+    const res=placer.analyze(labels,gw,gh,{hfov:V.hf,vfov:V.vf,pitch:pose.pitch,height:pose.height});
+    drawAIView(labels,gw,gh,res);
+    if(res.ok){
+      const p=placer.place(cur.id,cur.size[2]/100,cur.size[0]/100,res);
+      setWorld(p,pose.th);
+      $('#camAiV').textContent=res.c.toFixed(1)+' m';
+      setTip(`Wall ${res.c.toFixed(1)} m away · placed ${p.nature}`);
+    }else{
+      setTip(MSG[res.reason]||'Looking for the floor…');
+    }
+  }catch(e){
+    AI.failed=true;setMode('manual');
+    setTip('The AI model could not run on this phone. Set the distance by hand.');
+  }finally{
+    AI.busy=false;
+    if(V.on&&V.mode==='auto'&&!AI.failed)AI.timer=setTimeout(runAI,350);
+  }
+}
+// camera-frame placement (a right, b ahead, front direction) -> world, keeping the piece at the origin
+function setWorld(p,th){
+  const R=[Math.cos(th),-Math.sin(th)],F=[-Math.sin(th),-Math.cos(th)];
+  const tx=-(p.a*R[0]+p.b*F[0]),tz=-(p.a*R[1]+p.b*F[1]);
+  const fx=p.front.a*R[0]+p.front.b*F[0],fz=p.front.a*R[1]+p.front.b*F[1],tpsi=Math.atan2(fx,fz);
+  if(!V.fixed){V.px=tx;V.pz=tz;V.psi=tpsi;V.fixed=true}
+  else{
+    const k=.35;V.px+=(tx-V.px)*k;V.pz+=(tz-V.pz)*k;
+    let dp=tpsi-V.psi;while(dp>Math.PI)dp-=2*Math.PI;while(dp<-Math.PI)dp+=2*Math.PI;V.psi+=dp*k;
+  }
+  applyCam();
+}
+function drawAIView(labels,gw,gh,res){
+  const cv=$('#aiView'),dpr=Math.min(2,devicePixelRatio||1),W=innerWidth,H=innerHeight;
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+  const x=cv.getContext('2d');x.scale(dpr,dpr);
+  const vw=camVideo.videoWidth,vh=camVideo.videoHeight,s=Math.max(W/vw,H/vh),ox=(W-vw*s)/2,oy=(H-vh*s)/2,cw=vw*s/gw,ch=vh*s/gh;
+  x.fillStyle='rgba(80,220,140,.20)';
+  for(let r=0;r<gh;r++){let run=-1;
+    for(let c=0;c<=gw;c++){const f=c<gw&&placer.FLOOR_IDS.has(labels[r*gw+c]);
+      if(f&&run<0)run=c;else if(!f&&run>=0){x.fillRect(ox+run*cw,oy+r*ch,(c-run)*cw+.5,ch+.5);run=-1}}}
+  if(res.rows){x.fillStyle=res.ok?'#ffd166':'rgba(255,209,102,.5)';
+    for(const p of res.rows){x.beginPath();x.arc(ox+(p.c+.5)*cw,oy+p.r*ch,3,0,7);x.fill()}}
+}
+function clearAIView(){const cv=$('#aiView');cv.getContext('2d').clearRect(0,0,cv.width,cv.height)}
+function setMode(m){
+  V.mode=m;
+  document.querySelectorAll('#camMode button').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#distRow').hidden=m!=='manual';
+  clearTimeout(AI.timer);AI.timer=0;
+  if(m==='manual'){clearAIView();V.yaw0=null;V.px=0;V.pz=V.dist;V.psi=0;V.fixed=true;setTip('Drag to turn · use Distance to push it back toward the wall')}
+  if(m==='lock'){clearAIView();setTip(V.fixed?'Locked. Walk the phone around to look at it.':'Nothing placed yet. Switch to AI auto first.')}
+  if(m==='auto'){
+    if(AI.failed){setMode('manual');return}
+    V.fixed=false;$('#camAiV').textContent='–';
+    loadAI().then(()=>{if(V.on&&V.mode==='auto'&&!AI.timer&&!AI.busy){setTip('Point at the floor where it meets the wall');runAI()}})
+      .catch(()=>{AI.failed=true;setMode('manual');setTip('The AI model could not load. Check your internet, or set the distance by hand.')});
+  }
+  applyCam();
+}
+$('#camMode').addEventListener('click',e=>{const b=e.target.closest('[data-m]');if(b)setMode(b.dataset.m)});
+
 async function openCam(){
   let orientAsk=null;
   if(window.DeviceOrientationEvent&&typeof DeviceOrientationEvent.requestPermission==='function')orientAsk=DeviceOrientationEvent.requestPermission().catch(()=>'denied');
@@ -290,20 +402,20 @@ async function openCam(){
   camVideo.srcObject=camStream;camVideo.play().catch(()=>{});
   $('#cam').hidden=false;document.body.style.overflow='hidden';
   V.on=true;V.yaw0=null;V.turn=0;V.pitch=-12;
-  V.dist=Math.max(1.5,Math.min(8,+$('#camDist').value));
   window.addEventListener('deviceorientation',onOrient);
-  updateFov();applyCam();
+  updateFov();
   if(mv2.src!==mv.src)mv2.src=mv.src;else applyColor(mv2);
+  setMode(AI.failed?'manual':'auto');
 }
 function closeCam(){
-  V.on=false;window.removeEventListener('deviceorientation',onOrient);
+  V.on=false;clearTimeout(AI.timer);AI.timer=0;window.removeEventListener('deviceorientation',onOrient);
   if(camStream)camStream.getTracks().forEach(t=>t.stop());camStream=null;camVideo.srcObject=null;
-  $('#cam').hidden=true;document.body.style.overflow='';
+  clearAIView();$('#cam').hidden=true;document.body.style.overflow='';
 }
 camVideo.addEventListener('loadedmetadata',()=>{updateFov();applyCam()});
 addEventListener('resize',()=>{updateFov();applyCam()});
 mv2.addEventListener('load',()=>{applyColor(mv2);applyCam()});
-$('#camDist').addEventListener('input',e=>{V.dist=+e.target.value;$('#camDistV').textContent=V.dist.toFixed(1)+' m';applyCam()});
+$('#camDist').addEventListener('input',e=>{V.dist=+e.target.value;$('#camDistV').textContent=V.dist.toFixed(1)+' m';if(V.mode==='manual'){V.pz=V.dist;applyCam()}});
 $('#camH').addEventListener('input',e=>{V.height=+e.target.value;$('#camHV').textContent=V.height.toFixed(2)+' m';applyCam()});
 let turnDrag=null;
 mv2.addEventListener('pointerdown',e=>{turnDrag={x:e.clientX,t:V.turn};mv2.setPointerCapture(e.pointerId)});
@@ -311,7 +423,7 @@ mv2.addEventListener('pointermove',e=>{if(!turnDrag)return;V.turn=Math.round(tur
 mv2.addEventListener('pointerup',()=>turnDrag=null);
 mv2.addEventListener('pointercancel',()=>turnDrag=null);
 $('#camClose').addEventListener('click',closeCam);
-$('#camReset').addEventListener('click',()=>{V.yaw0=null;V.turn=0;applyCam();$('#camTip').textContent='Centered in front of you'});
+$('#camReset').addEventListener('click',()=>{V.turn=0;if(V.mode==='manual'){V.yaw0=null}else setMode('auto');applyCam();});
 $('#camShot').addEventListener('click',async()=>{
   try{
     const W=innerWidth,H=innerHeight,dpr=Math.min(2,devicePixelRatio||1),c=document.createElement('canvas');

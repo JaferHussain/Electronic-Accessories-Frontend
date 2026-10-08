@@ -357,14 +357,32 @@ details[open] summary{margin-bottom:8px}
     get: function(k){ try { return localStorage.getItem(k) || ""; } catch(e){ return ""; } },
     set: function(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
   };
-  // Original short stories written for this tool (free to use).
+  // Original short stories written for this tool (free to use). k = keywords (Roman Urdu + English) used to match a prompt.
   var STORIES = [
-    { t: "ایماندار دکاندار", s: "ایک چھوٹے سے بازار میں احمد کی موبائل کی دکان تھی۔ ایک دن ایک بوڑھی عورت آئی اور مہنگا چارجر مانگا۔ احمد نے اس کا فون دیکھا اور کہا، اماں جی، آپ کو نیا چارجر نہیں چاہیے، صرف کیبل خراب ہے۔ اس نے سو روپے کی کیبل بدل دی۔ عورت دعائیں دیتی چلی گئی۔ اگلے مہینے وہ اپنے تین بیٹوں کے ساتھ آئی، اور تینوں نے نئے فون احمد ہی سے خریدے۔ سچائی کبھی گھاٹے کا سودا نہیں ہوتی۔" },
-    { t: "دو بیج", s: "ایک کسان نے اپنے دو بیٹوں کو ایک ایک بیج دیا۔ بڑے بیٹے نے بیج ایک خوبصورت ڈبے میں سنبھال کر رکھ دیا۔ چھوٹے بیٹے نے اسے مٹی میں بو دیا اور روز پانی دیتا رہا۔ ایک سال بعد کسان نے پوچھا، تمہارے بیج کہاں ہیں؟ بڑے بیٹے نے ڈبہ کھولا تو بیج سوکھ چکا تھا۔ چھوٹا بیٹا باپ کو باغ میں لے گیا جہاں ایک ننھا درخت پھل دے رہا تھا۔ موقع سنبھال کر رکھنے سے نہیں، استعمال کرنے سے بڑھتا ہے۔" },
-    { t: "آخری گھر", s: "ایک مستری تیس سال سے ایک ٹھیکیدار کے لیے گھر بنا رہا تھا۔ ریٹائرمنٹ سے پہلے ٹھیکیدار نے کہا، بس ایک آخری گھر اور بنا دو۔ مستری تھکا ہوا تھا، اس نے سستا سامان لگایا اور جلدی میں کام ختم کر دیا۔ چابی دیتے وقت ٹھیکیدار مسکرایا اور بولا، یہ گھر میری طرف سے تمہارا تحفہ ہے۔ مستری کو بہت افسوس ہوا۔ ہم روز اپنی زندگی کا گھر خود بنا رہے ہوتے ہیں، اس لیے ہر اینٹ دل سے لگائیں۔" },
-    { t: "ترپال", s: "ایک لڑکا روز اسکول جاتے ہوئے دیکھتا کہ ایک بوڑھا آدمی سڑک کنارے بیٹھ کر جوتے مرمت کرتا ہے۔ ایک دن تیز بارش ہوئی اور بوڑھے کا سامان بھیگنے لگا۔ لڑکے نے اپنے جیب خرچ سے ایک ترپال خریدا اور خاموشی سے اس کی جگہ پر باندھ دیا۔ کئی سال بعد وہ نوکری کے انٹرویو کے لیے جا رہا تھا کہ اس کا جوتا پھٹ گیا۔ وہی بوڑھا سامنے بیٹھا تھا۔ اس نے جوتا ٹھیک کیا، پیسے لینے سے انکار کیا اور کہا، بیٹا، وہ ترپال میں آج تک نہیں بھولا۔ نیکی ہمیشہ لوٹ کر آتی ہے۔" },
-    { t: "The Last Power Bank", s: "During a city-wide blackout, a young man had one fully charged power bank. His neighbor's daughter needed her phone to call a doctor. He handed it over without a second thought. That night he sat in the dark with nothing to scroll, and for the first time in years he talked with his family until midnight. In the morning the lights came back, but he left his phone in the drawer a little longer. Sometimes losing the signal is how we find each other again." },
-    { t: "One More Lamppost", s: "A girl wanted to run a marathon, but on the first day she could only run to the end of her street. Her friends laughed. She ran to the end of the street again the next day, and the next. Every week she added one more lamppost. Nobody noticed the lampposts adding up. A year later she crossed the finish line of the city marathon, slow but smiling. Big goals are just small steps that refuse to stop." }
+    { t: "ایماندار دکاندار", k: ["dukan","dukaan","dukandar","imandar","sach","sachai","honest","shop","mobile","charger","customer","grahak"], sc: ["small mobile phone shop in a busy South Asian bazaar, warm evening light","elderly woman holding an old phone at a shop counter","shopkeeper repairing a charging cable, close up of hands","family of young men smiling at the shop, golden hour"],
+      s: "ایک چھوٹے سے بازار میں احمد کی موبائل کی دکان تھی۔ ایک دن ایک بوڑھی عورت آئی اور مہنگا چارجر مانگا۔ احمد نے اس کا فون دیکھا اور کہا، اماں جی، آپ کو نیا چارجر نہیں چاہیے، صرف کیبل خراب ہے۔ اس نے سو روپے کی کیبل بدل دی۔ عورت دعائیں دیتی چلی گئی۔ اگلے مہینے وہ اپنے تین بیٹوں کے ساتھ آئی، اور تینوں نے نئے فون احمد ہی سے خریدے۔ سچائی کبھی گھاٹے کا سودا نہیں ہوتی۔" },
+    { t: "دو بیج", k: ["beej","mauqa","moqa","opportunity","seed","kisan","darakht","tree","beta","bete"], sc: ["farmer giving seeds to two sons, rustic village courtyard","a seed kept inside a decorative wooden box, dim light","young boy watering a sapling in a field at sunrise","small fruit tree in a garden, father and son, warm light"],
+      s: "ایک کسان نے اپنے دو بیٹوں کو ایک ایک بیج دیا۔ بڑے بیٹے نے بیج ایک خوبصورت ڈبے میں سنبھال کر رکھ دیا۔ چھوٹے بیٹے نے اسے مٹی میں بو دیا اور روز پانی دیتا رہا۔ ایک سال بعد کسان نے پوچھا، تمہارے بیج کہاں ہیں؟ بڑے بیٹے نے ڈبہ کھولا تو بیج سوکھ چکا تھا۔ چھوٹا بیٹا باپ کو باغ میں لے گیا جہاں ایک ننھا درخت پھل دے رہا تھا۔ موقع سنبھال کر رکھنے سے نہیں، استعمال کرنے سے بڑھتا ہے۔" },
+    { t: "آخری گھر", k: ["ghar","house","mistri","builder","kaam","quality","imandari","retire","thekedar"], sc: ["mason building a brick house, dusty construction site","tired old builder resting, evening light","new small house with a key in a hand, close up","old man looking at a house with regret, soft sunset"],
+      s: "ایک مستری تیس سال سے ایک ٹھیکیدار کے لیے گھر بنا رہا تھا۔ ریٹائرمنٹ سے پہلے ٹھیکیدار نے کہا، بس ایک آخری گھر اور بنا دو۔ مستری تھکا ہوا تھا، اس نے سستا سامان لگایا اور جلدی میں کام ختم کر دیا۔ چابی دیتے وقت ٹھیکیدار مسکرایا اور بولا، یہ گھر میری طرف سے تمہارا تحفہ ہے۔ مستری کو بہت افسوس ہوا۔ ہم روز اپنی زندگی کا گھر خود بنا رہے ہوتے ہیں، اس لیے ہر اینٹ دل سے لگائیں۔" },
+    { t: "ترپال", k: ["neki","madad","help","kindness","joota","shoes","bacha","larka","boy","interview","naukri"], sc: ["old cobbler repairing shoes on a roadside, rainy day","schoolboy tying a tarpaulin over a roadside stall in the rain","young man in formal clothes with a torn shoe on a city street","old cobbler smiling at a young man, warm emotional light"],
+      s: "ایک لڑکا روز اسکول جاتے ہوئے دیکھتا کہ ایک بوڑھا آدمی سڑک کنارے بیٹھ کر جوتے مرمت کرتا ہے۔ ایک دن تیز بارش ہوئی اور بوڑھے کا سامان بھیگنے لگا۔ لڑکے نے اپنے جیب خرچ سے ایک ترپال خریدا اور خاموشی سے اس کی جگہ پر باندھ دیا۔ کئی سال بعد وہ نوکری کے انٹرویو کے لیے جا رہا تھا کہ اس کا جوتا پھٹ گیا۔ وہی بوڑھا سامنے بیٹھا تھا۔ اس نے جوتا ٹھیک کیا، پیسے لینے سے انکار کیا اور کہا، بیٹا، وہ ترپال میں آج تک نہیں بھولا۔ نیکی ہمیشہ لوٹ کر آتی ہے۔" },
+    { t: "مزدور کی دکان", k: ["mazdoor","mazdur","labour","worker","mehnat","dukaan","shop","kamyabi","success","garib","gareeb","poor"], sc: ["daily wage worker carrying bricks at dawn, dusty city","worker counting small coins at night under a single bulb","tiny roadside tea stall being opened for the first time","proud man standing in front of his own small shop, morning sun"],
+      s: "رحیم روز صبح چھ بجے مزدوری کے لیے نکلتا اور رات کو تھکا ہارا لوٹتا۔ وہ ہر دن کی کمائی میں سے دس روپے ایک پرانے ڈبے میں ڈال دیتا۔ لوگ ہنستے کہ دس روپے سے کیا بنے گا؟ تین سال بعد ڈبہ بھر گیا۔ رحیم نے سڑک کنارے چائے کا چھوٹا سا کھوکھا لگایا۔ پانچ سال بعد وہاں ایک دکان تھی جس کے دروازے پر لکھا تھا، رحیم ٹی ہاؤس۔ چھوٹی بچت اور بڑا صبر، یہی کامیابی کا راز ہے۔" },
+    { t: "ماں کی روٹی", k: ["maa","maan","ammi","mother","walida","dua","roti","pyar","love","beta"], sc: ["mother making flatbread on a clay stove at dawn, warm glow","young man leaving home with a bag, mother waving at the door","busy office at night, young man eating alone","young man returning home, hugging his mother, emotional light"],
+      s: "علی شہر میں نوکری کے لیے گیا تو ماں نے اس کے بیگ میں دو روٹیاں رکھ دیں۔ شہر میں اس نے مہنگے ہوٹلوں میں کھانے کھائے، مگر کہیں وہ ذائقہ نہ ملا۔ ایک رات دفتر میں دیر ہو گئی، وہ اکیلا بیٹھا تھا کہ فون بجا۔ ماں پوچھ رہی تھی، بیٹا، کھانا کھایا؟ علی کی آنکھیں بھر آئیں۔ اگلی چھٹی پر وہ سیدھا ماں کے پاس پہنچا۔ دنیا کے سارے ذائقے ماں کی ایک روٹی کے برابر نہیں۔" },
+    { t: "سچا دوست", k: ["dost","dosti","friend","friendship","yaar","sath","saath","mushkil"], sc: ["two boys walking to school together on a dusty village road","young man sitting alone in a hospital corridor, worried","friend arriving with tea and a smile, warm light","two grown men laughing together on a rooftop at sunset"],
+      s: "عمر کے بہت دوست تھے، جو ہر دعوت میں ساتھ ہوتے۔ ایک دن اس کے والد ہسپتال میں داخل ہوئے اور اسے خون کی ضرورت پڑی۔ اس نے سب کو فون کیا، کسی نے بہانہ بنایا، کسی نے فون ہی نہ اٹھایا۔ رات کے دو بجے ایک شخص ہسپتال پہنچا، وہی بچپن کا دوست کامران جسے عمر نے برسوں سے یاد بھی نہیں کیا تھا۔ اس نے کہا، تم نے بلایا اور میں نہ آتا؟ دوست بہت ہوتے ہیں، مگر سچا دوست مشکل میں پہچانا جاتا ہے۔" },
+    { t: "آخری صفحہ", k: ["talib","student","parhai","padhai","study","imtihan","exam","school","college","fail","pass","ustad","teacher"], sc: ["student studying late at night by a small lamp","exam hall with rows of desks, tense atmosphere","teacher handing back a paper, kind expression","graduate in cap and gown looking at the sky, hopeful"],
+      s: "سارہ امتحان میں فیل ہو گئی۔ وہ رو رہی تھی کہ استاد نے اسے بلایا اور ایک پرانی کاپی دی۔ اس پر لکھا تھا، فیل۔ استاد نے کہا، یہ میری کاپی ہے، میں بھی ایک بار فیل ہوا تھا۔ پھر انہوں نے آخری صفحہ کھولا، جہاں ان کی ڈگری کی تصویر چپکی تھی۔ سارہ نے آنسو پونچھے اور اگلے دن سے پھر پڑھنا شروع کیا۔ ایک سال بعد وہ کلاس میں اول آئی۔ ناکامی کہانی کا آخری صفحہ نہیں ہوتی۔" },
+    { t: "بارش کا انتظار", k: ["kisan","farmer","barish","rain","gaon","village","fasal","crop","sabr","patience","umeed","hope"], sc: ["dry cracked farmland under a hot sun, lone farmer","farmer looking at the sky, dark clouds gathering","heavy rain falling on a village field, children dancing","lush green crops swaying, farmer smiling, golden light"],
+      s: "گاؤں میں دو سال سے بارش نہیں ہوئی تھی۔ سب کسانوں نے کھیت چھوڑ دیے، مگر بوڑھا کرم دین ہر صبح اپنا کھیت تیار کرتا رہا۔ لوگ ہنستے، بابا، بادل تمہاری بات نہیں سنتے۔ وہ جواب دیتا، جب بارش آئے گی تو میرا کھیت تیار ہوگا۔ ایک رات زور کی بارش ہوئی۔ صبح صرف کرم دین کے کھیت میں بیج بوئے جا سکتے تھے۔ اس سال اس کی فصل پورے گاؤں نے خریدی۔ امید والا ہی موقع کے لیے تیار ہوتا ہے۔" },
+    { t: "ابا کے جوتے", k: ["abba","abu","baap","father","walid","qurbani","sacrifice","joote","shoes","family"], sc: ["worn out old shoes beside a doorway, soft morning light","father walking to work on a long dusty road","teenage son opening a box with new shoes, surprised","son putting new shoes on his father's feet, emotional warm light"],
+      s: "حمزہ کو نئے جوتے چاہیے تھے۔ ابا نے اگلے دن نئے جوتے لا دیے۔ کچھ دن بعد حمزہ نے دیکھا کہ ابا کے اپنے جوتے پھٹے ہوئے تھے، ان میں گتا رکھا تھا۔ اس نے پوچھا، ابا، آپ نے اپنے لیے کیوں نہیں لیے؟ ابا مسکرائے، بیٹا، میرے پاؤں اب سخت ہو چکے ہیں۔ برسوں بعد حمزہ کی پہلی تنخواہ آئی تو وہ سب سے پہلے ابا کے لیے جوتے لایا۔ باپ کی قربانیاں اکثر خاموش ہوتی ہیں۔" },
+    { t: "The Last Power Bank", k: ["power","bank","blackout","bijli","light","phone","family","neighbour","neighbor"], sc: ["dark city during a power blackout, a few candles in windows","young man handing a power bank to a little girl at a door","family talking in candlelight, warm and cozy","sunrise over a city as the lights come back"],
+      s: "During a city-wide blackout, a young man had one fully charged power bank. His neighbor's daughter needed her phone to call a doctor. He handed it over without a second thought. That night he sat in the dark with nothing to scroll, and for the first time in years he talked with his family until midnight. In the morning the lights came back, but he left his phone in the drawer a little longer. Sometimes losing the signal is how we find each other again." },
+    { t: "One More Lamppost", k: ["goal","run","running","marathon","dor","himmat","hosla","courage","fitness","dream","khwab"], sc: ["girl running on a quiet street at dawn under lampposts","friends laughing on a sidewalk, girl tying her shoes","street of lampposts stretching into the distance at dusk","runner crossing a marathon finish line, crowd cheering"],
+      s: "A girl wanted to run a marathon, but on the first day she could only run to the end of her street. Her friends laughed. She ran to the end of the street again the next day, and the next. Every week she added one more lamppost. Nobody noticed the lampposts adding up. A year later she crossed the finish line of the city marathon, slow but smiling. Big goals are just small steps that refuse to stop." }
   ];
 
   var S = { clipUrl: "", clipBlob: null, audioBlob: null, resultUrl: "", recorder: null };
@@ -554,24 +572,38 @@ details[open] summary{margin-bottom:8px}
     "Length: about 2.3 words per second of the requested duration, otherwise 80 to 110 words. Strong first line, short sentences, one-line lesson at the end. " +
     "Reply with JSON only: {\"title\": string, \"story\": string, \"scenes\": [4 short English image prompts, one per part of the story, cinematic, no text, no logos, no real people or famous characters]}. Request: ";
 
-  function fromLibrary(prompt){
-    var p = prompt.toLowerCase(), best = 0, score = -1;
+  function fromLibrary(prompt, why){
+    var p = " " + prompt.toLowerCase().replace(/[^a-z\u0600-\u06ff\s]/g, " ") + " ", best = [], top = 0;
     STORIES.forEach(function(st, i){
-      var sc = 0; st.s.toLowerCase().split(/\s+/).forEach(function(w){ if (w.length > 3 && p.indexOf(w) >= 0) sc++; });
-      if (sc > score || (sc === score && Math.random() < .5)){ score = sc; best = i; }
+      var sc = st.k.filter(function(w){ return p.indexOf(w) >= 0; }).length;
+      if (sc > top){ top = sc; best = [i]; } else if (sc === top) best.push(i);
     });
-    var st = STORIES[best];
-    return { title: st.t, story: st.s, scenes: ["warm cinematic street at golden hour", "close up of hands working, soft light", "quiet room with window light, emotional", "sunrise over city, hopeful"], fallback: true };
+    var pick = STORIES[best[Math.floor(Math.random() * best.length)]];
+    return { title: pick.t, story: pick.s, scenes: pick.sc, fallback: true, matched: top > 0, why: why };
+  }
+
+  function parseStory(raw){
+    raw = String(raw || "");
+    var j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
+    if (!j.story || j.story.length < 40) throw new Error("khaali jawab");
+    if (!Array.isArray(j.scenes) || !j.scenes.length) j.scenes = ["cinematic street at golden hour", "close up of hands, soft light", "quiet room with window light", "sunrise over a city, hopeful"];
+    return j;
   }
 
   function writeStory(prompt){
-    var url = POLL + encodeURIComponent(STORY_RULES + prompt) + "?json=true&seed=" + Math.floor(Math.random() * 1e6);
-    return fetch(url).then(function(r){ if (!r.ok) throw 0; return r.text(); }).then(function(raw){
-      var j = JSON.parse(raw.slice(raw.indexOf("{"), raw.lastIndexOf("}") + 1));
-      if (!j.story || j.story.length < 40) throw 0;
-      if (!Array.isArray(j.scenes) || !j.scenes.length) j.scenes = fromLibrary("").scenes;
-      return j;
-    }).catch(function(){ return fromLibrary(prompt); });
+    var full = STORY_RULES + prompt, seed = Math.floor(Math.random() * 1e6), why = "";
+    var viaPost = function(){
+      return fetch(POLL + "openai", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ model: "openai", seed: seed, referrer: "reelstock", messages: [{ role: "user", content: full }] }) })
+        .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.json(); })
+        .then(function(d){ return parseStory(d.choices && d.choices[0] && d.choices[0].message && d.choices[0].message.content); });
+    };
+    var viaGet = function(){
+      return fetch(POLL + encodeURIComponent(full) + "?json=true&model=openai&referrer=reelstock&seed=" + seed)
+        .then(function(r){ if (!r.ok) throw new Error("error " + r.status); return r.text(); }).then(parseStory);
+    };
+    return viaPost().catch(function(e){ why = "POST " + e.message; return viaGet(); })
+      .catch(function(e){ why += ", GET " + (e.message === "Failed to fetch" ? "no connection" : e.message); return fromLibrary(prompt, why); });
   }
 
   // AI pictures for each scene; a generated backdrop stands in when one can't load.
@@ -716,10 +748,10 @@ details[open] summary{margin-bottom:8px}
     step("story", "run"); aSay("Story likhi ja rahi hai…");
     writeStory(prompt).then(function(j){
       story = j; step("story", "ok");
-      if (j.fallback) aSay("AI story service abhi busy hai, is liye library ki story li hai.");
+      if (j.fallback) aSay((j.matched ? "AI story service ne jawab nahi diya, is liye prompt se milti julti library story li hai" : "AI story service ne jawab nahi diya aur library mein is topic ki story nahi, is liye koi bhi story li hai") + " (" + j.why + ").");
       step("clip", "run"); step("voice", "run");
       return Promise.all([
-        sceneImages(j.scenes.slice(0, 4), function(i){ aSay("“" + (j.title || "Story") + "” — tasveer " + (i + 1) + " / " + Math.min(4, j.scenes.length) + " ban rahi hai…"); }),
+        sceneImages(j.scenes.slice(0, 4), function(i){ aSay((j.fallback ? "[Library story] " : "") + "“" + (j.title || "Story") + "” — tasveer " + (i + 1) + " / " + Math.min(4, j.scenes.length) + " ban rahi hai…"); }),
         voiceOver(j.story)
       ]);
     }).then(function(r){
